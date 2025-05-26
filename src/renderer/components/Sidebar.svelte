@@ -1,5 +1,6 @@
 <script>
-  import NowPlaying from "./NowPlaying.svelte"; // Props
+  import NowPlaying from "./NowPlaying.svelte";
+  // Props
   let {
     spotifyAPI,
     currentPlayback = $bindable(),
@@ -14,7 +15,10 @@
     trackSkipAction,
     trackLikeAction,
     trackRemovalAction,
-    behaviorTracker
+    behaviorTracker,
+    analyzeCurrentTrack,
+    currentPlaylist = $bindable(),
+    handleAutoAdaptation
   } = $props();
   // State for sidebar controls using runes
   let autoAdaptEnabled = $state(true);
@@ -24,20 +28,29 @@
   $effect(() => {
     loadSidebarState();
   });
-
   function loadSidebarState() {
     try {
       autoAdaptEnabled = localStorage.getItem("autoAdaptEnabled") !== "false";
       discoveryLevel = parseInt(localStorage.getItem("discoveryLevel") || "30");
+
+      // Sync with behaviorTracker if available
+      if (behaviorTracker) {
+        behaviorTracker.setAutoAdaptEnabled(autoAdaptEnabled);
+      }
     } catch (error) {
       console.error("Failed to load sidebar state:", error);
     }
   }
-
   function toggleAutoAdapt() {
     localStorage.setItem("autoAdaptEnabled", autoAdaptEnabled.toString());
+
+    // Connect to behaviorTracker
+    if (behaviorTracker) {
+      behaviorTracker.setAutoAdaptEnabled(autoAdaptEnabled);
+    }
+
     if (autoAdaptEnabled) {
-      showInfo("Auto-adapt mode enabled");
+      showInfo("Auto-adapt mode enabled - playlist will adapt to your listening patterns");
     } else {
       showInfo("Auto-adapt mode disabled");
     }
@@ -103,7 +116,15 @@
 </script>
 
 <!-- Now Playing -->
-<NowPlaying {spotifyAPI} bind:currentPlayback {behaviorTracker} {learningEnabled} />
+<NowPlaying
+  {spotifyAPI}
+  bind:currentPlayback
+  {behaviorTracker}
+  {learningEnabled}
+  {analyzeCurrentTrack}
+  bind:currentPlaylist
+  onAutoAdaptation={handleAutoAdaptation}
+/>
 
 <!-- Smart Controls -->
 <div class="card bg-secondary mb-3">

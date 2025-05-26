@@ -44,6 +44,9 @@ class SpotifyAPI {
       // Load app configuration
       this.appConfig = await window.electronAPI.getAppConfig();
 
+      // Load client credentials first (required for token refresh)
+      await this.loadClientCredentials();
+
       // Load stored credentials (with graceful error handling)
       await this.loadStoredCredentials();
 
@@ -52,6 +55,7 @@ class SpotifyAPI {
     } catch (error) {
       // Don't throw initialization errors, just log them
       // The app should still be usable for authentication
+      console.warn("Spotify initialization warning:", error.message);
     }
   }
 
@@ -85,36 +89,65 @@ class SpotifyAPI {
     if (stored) {
       try {
         const credentials = JSON.parse(stored);
+
+        // Validate required fields
+        if (!credentials.accessToken || !credentials.refreshToken || !credentials.tokenExpiry) {
+          console.warn("Incomplete stored credentials, clearing...");
+          this.clearStoredCredentials();
+          return;
+        }
+
         this.accessToken = credentials.accessToken;
         this.refreshToken = credentials.refreshToken;
-        this.tokenExpiry = new Date(credentials.tokenExpiry); // Check if token is still valid
+        this.tokenExpiry = new Date(credentials.tokenExpiry);
+
+        // Check if stored credentials are too old (more than 30 days)
+        const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+        const savedAt = credentials.savedAt ? new Date(credentials.savedAt) : new Date(0);
+        if (Date.now() - savedAt.getTime() > maxAge) {
+          console.warn("Stored credentials are too old, clearing...");
+          this.clearStoredCredentials();
+          return;
+        }
+
+        // Check if token is still valid
         if (this.tokenExpiry > new Date()) {
           this.isConnected = true;
           this.updateConnectionStatus();
           this.startPlaybackPolling();
+          console.log("Using valid stored credentials");
         } else if (this.refreshToken) {
+          console.log("Token expired, attempting refresh...");
           try {
             await this.refreshAccessToken();
+            this.startPlaybackPolling();
           } catch (refreshError) {
+            console.error("Failed to refresh token:", refreshError);
             // Refresh failed, clear stored credentials and allow re-authentication
             this.clearStoredCredentials();
             this.showNotification("Session expired. Please reconnect to Spotify.", "warning");
           }
         }
       } catch (error) {
+        console.error("Error loading stored credentials:", error);
         // Invalid stored credentials, clear them
         this.clearStoredCredentials();
       }
     }
   }
-
   saveCredentials() {
-    const credentials = {
-      accessToken: this.accessToken,
-      refreshToken: this.refreshToken,
-      tokenExpiry: this.tokenExpiry?.toISOString()
-    };
-    localStorage.setItem("spotifyCredentials", JSON.stringify(credentials));
+    try {
+      const credentials = {
+        accessToken: this.accessToken,
+        refreshToken: this.refreshToken,
+        tokenExpiry: this.tokenExpiry?.toISOString(),
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem("spotifyCredentials", JSON.stringify(credentials));
+      console.log("Credentials saved successfully");
+    } catch (error) {
+      console.error("Failed to save credentials:", error);
+    }
   }
 
   clearStoredCredentials() {
@@ -218,33 +251,55 @@ class SpotifyAPI {
       throw new Error("No refresh token available");
     }
 
-    const response = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${btoa(this.clientId + ":" + this.clientSecret)}`
-      },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: this.refreshToken
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Failed to refresh token: ${response.status} ${errorData}`);
+    if (!this.clientId || !this.clientSecret) {
+      throw new Error("Client credentials not loaded");
     }
 
-    const data = await response.json();
-    this.accessToken = data.access_token;
-    this.tokenExpiry = new Date(Date.now() + data.expires_in * 1000);
+    try {
+      const response = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${btoa(this.clientId + ":" + this.clientSecret)}`
+        },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: this.refreshToken
+        })
+      });
 
-    if (data.refresh_token) {
-      this.refreshToken = data.refresh_token;
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("Token refresh failed:", response.status, errorData);
+
+        // Clear invalid credentials
+        this.clearStoredCredentials();
+        this.disconnect();
+        this.showNotification("Session expired. Please reconnect to Spotify.", "warning");
+
+        throw new Error(`Failed to refresh token: ${response.status} ${errorData}`);
+      }
+
+      const data = await response.json();
+      this.accessToken = data.access_token;
+      this.tokenExpiry = new Date(Date.now() + data.expires_in * 1000);
+
+      // Some refresh responses don't include a new refresh token
+      if (data.refresh_token) {
+        this.refreshToken = data.refresh_token;
+      }
+
+      this.saveCredentials();
+      this.isConnected = true;
+      this.updateConnectionStatus();
+
+      console.log("Token refreshed successfully, expires at:", this.tokenExpiry);
+    } catch (error) {
+      console.error("Error refreshing token:", error);
+      this.clearStoredCredentials();
+      this.disconnect();
+      throw error;
     }
-    this.saveCredentials();
-    this.isConnected = true;
-    this.updateConnectionStatus();
   }
 
   disconnect() {
@@ -269,15 +324,20 @@ class SpotifyAPI {
       this.connectionCallback(this.isConnected);
     }
   }
-
-  async makeApiRequest(endpoint, options = {}) {
+  async makeApiRequest(endpoint, options = {}, retryCount = 0) {
     if (!this.accessToken) {
       throw new Error("Not authenticated with Spotify");
     }
 
-    // Check if token needs refresh
-    if (this.tokenExpiry && this.tokenExpiry <= new Date()) {
-      await this.refreshAccessToken();
+    // Check if token needs refresh (refresh 5 minutes before expiry)
+    const refreshBuffer = 5 * 60 * 1000; // 5 minutes
+    if (this.tokenExpiry && this.tokenExpiry <= new Date(Date.now() + refreshBuffer)) {
+      try {
+        await this.refreshAccessToken();
+      } catch (refreshError) {
+        // If refresh fails, let the 401 handler below deal with it
+        console.warn("Proactive token refresh failed:", refreshError.message);
+      }
     }
 
     const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
@@ -288,9 +348,20 @@ class SpotifyAPI {
         ...options.headers
       }
     });
+
     if (!response.ok) {
-      if (response.status === 401) {
-        // Token expired or invalid
+      if (response.status === 401 && retryCount === 0) {
+        // Token expired or invalid - try to refresh once
+        try {
+          await this.refreshAccessToken();
+          // Retry the request with the new token
+          return this.makeApiRequest(endpoint, options, 1);
+        } catch (refreshError) {
+          this.disconnect();
+          throw new Error("Authentication expired. Please reconnect.");
+        }
+      } else if (response.status === 401) {
+        // Already retried, authentication is truly invalid
         this.disconnect();
         throw new Error("Authentication expired. Please reconnect.");
       }
@@ -305,7 +376,22 @@ class SpotifyAPI {
         // No content - valid response for some endpoints
         return {};
       }
-      throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
+
+      // Try to extract detailed error message from response body
+      let errorMessage = `Spotify API error: ${response.status} ${response.statusText}`;
+      try {
+        const errorBody = await response.text();
+        if (errorBody) {
+          const errorData = JSON.parse(errorBody);
+          if (errorData.error && errorData.error.message) {
+            errorMessage = `${response.status} ${response.statusText}: ${errorData.error.message}`;
+          }
+        }
+      } catch (parseError) {
+        // If we can't parse the error body, use the generic message
+      }
+
+      throw new Error(errorMessage);
     }
 
     // Some Spotify endpoints return empty responses (like PUT requests)
@@ -355,6 +441,15 @@ class SpotifyAPI {
   }
   async updatePlaybackState() {
     try {
+      // Don't try to update if not connected
+      if (!this.isConnected || !this.accessToken) {
+        this.currentPlayback = null;
+        if (this.playbackCallback) {
+          this.playbackCallback(null);
+        }
+        return;
+      }
+
       const playback = await this.makeApiRequest("/me/player");
 
       if (playback && playback.item) {
@@ -383,6 +478,14 @@ class SpotifyAPI {
       } else if (error.message.includes("429")) {
         // Rate limited - don't update state, just throw to trigger backoff
         throw error;
+      } else if (error.message.includes("Authentication expired")) {
+        // Authentication failed - stop polling
+        console.warn("Authentication expired, stopping playback polling");
+        this.stopPlaybackPolling();
+        this.currentPlayback = null;
+        if (this.playbackCallback) {
+          this.playbackCallback(null);
+        }
       } else {
         console.warn("Playback state update failed:", error.message);
         // For other errors, we might still want to clear the current playback
@@ -686,6 +789,61 @@ class SpotifyAPI {
       });
     } catch (error) {
       console.error("Failed to play track in context:", error);
+      throw error;
+    }
+  }
+  // Audio Features Analysis
+  async getAudioFeatures(trackId) {
+    try {
+      const features = await this.makeApiRequest(`/audio-features/${trackId}`);
+      return features;
+    } catch (error) {
+      // Handle specific cases where audio features are not available
+      if (error.message.includes("403") || error.message.includes("Forbidden")) {
+        console.warn(`Audio features not available for track ${trackId} (restricted content)`);
+        return null; // Return null instead of throwing
+      } else if (error.message.includes("404") || error.message.includes("Not Found")) {
+        console.warn(`Audio features not found for track ${trackId}`);
+        return null;
+      }
+      console.error("Failed to get audio features:", error);
+      throw error;
+    }
+  }
+  async getTrackDetails(trackId) {
+    try {
+      const track = await this.makeApiRequest(`/tracks/${trackId}`);
+      return track;
+    } catch (error) {
+      console.error("Failed to get track details:", error);
+      if (
+        error.message.includes("403") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("404") ||
+        error.message.includes("Not Found")
+      ) {
+        console.warn(`Track details not available for track ${trackId}`);
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async getArtistDetails(artistId) {
+    try {
+      const artist = await this.makeApiRequest(`/artists/${artistId}`);
+      return artist;
+    } catch (error) {
+      console.error("Failed to get artist details:", error);
+      if (
+        error.message.includes("403") ||
+        error.message.includes("Forbidden") ||
+        error.message.includes("404") ||
+        error.message.includes("Not Found")
+      ) {
+        console.warn(`Artist details not available for artist ${artistId}`);
+        return null;
+      }
       throw error;
     }
   }

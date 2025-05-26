@@ -18,7 +18,21 @@ class BehaviorTracker {
       likeThreshold: 0.8, // Like if > 80% of track played
       sessionTimeout: 30 * 60 * 1000, // 30 minutes
       maxBehaviorHistory: 1000, // Keep last 1000 interactions
-      learningEnabled: true
+      learningEnabled: true,
+      // Auto-adaptation settings
+      autoAdaptEnabled: false,
+      adaptationCooldown: 2 * 60 * 1000, // 2 minutes between adaptations
+      minTracksBeforeAdaptation: 3, // Minimum tracks in playlist before removing
+      maxAdaptationsPerSession: 5, // Limit adaptations per session
+      similarityThreshold: 0.7 // How similar tracks need to be for removal
+    };
+
+    // Auto-adaptation state
+    this.adaptationState = {
+      lastAdaptationTime: 0,
+      adaptationsThisSession: 0,
+      pendingAdaptations: [],
+      currentPlaylistContext: null
     };
 
     this.setupEventTracking();
@@ -63,10 +77,31 @@ class BehaviorTracker {
       }
     };
   }
-
   validateBehaviorData(data) {
     // Ensure all required properties exist
-    const defaultData = this.loadBehaviorData();
+    const defaultData = {
+      preferences: {
+        genres: {},
+        artists: {},
+        audioFeatures: {},
+        timeOfDay: {},
+        energy: { high: 0, medium: 0, low: 0 }
+      },
+      interactions: [],
+      sessions: [],
+      insights: {
+        skipPatterns: [],
+        favoriteFeatures: {},
+        listeningHabits: {}
+      },
+      statistics: {
+        totalPlays: 0,
+        totalSkips: 0,
+        averageSessionLength: 0,
+        lastUpdated: Date.now()
+      }
+    };
+
     return {
       ...defaultData,
       ...data,
@@ -139,7 +174,6 @@ class BehaviorTracker {
       isPlaying: playback.is_playing
     });
   }
-
   // Analyze how user interacted with a track (skip, like, complete)
   analyzeTrackCompletion(track, startTime, lastProgressMs) {
     if (!track) return;
@@ -153,9 +187,9 @@ class BehaviorTracker {
         name: track.name,
         artists: track.artists.map((a) => a.name),
         album: track.album.name,
-        genres: track.genres || [],
+        genres: this.extractGenresFromTrack(track), // Extract genres safely
         audioFeatures: null, // Will be fetched later
-        popularity: track.popularity,
+        popularity: track.popularity || 50, // Default popularity if missing
         duration_ms: track.duration_ms
       },
       listenDuration,
@@ -392,10 +426,15 @@ class BehaviorTracker {
       scores
     };
   }
-
   // Generate AI-powered recommendations based on behavior
   async generateRecommendations() {
     if (!this.aiGenerator || !this.config.learningEnabled) {
+      return this.generateAlgorithmicRecommendations();
+    }
+
+    // Check if AI is actually configured before attempting to use it
+    if (!this.aiGenerator.hasApiKey) {
+      console.log("🎵 Using algorithmic recommendations (AI not configured)");
       return this.generateAlgorithmicRecommendations();
     }
 
@@ -406,7 +445,7 @@ class BehaviorTracker {
       const response = await this.aiGenerator.makeAIRequest(prompt);
       return this.parseAIRecommendations(response);
     } catch (error) {
-      console.warn("AI recommendations failed, using algorithmic fallback:", error);
+      console.log("🎵 AI recommendations failed, using algorithmic fallback");
       return this.generateAlgorithmicRecommendations();
     }
   }
@@ -616,6 +655,22 @@ Respond in JSON format:
     return this.config.learningEnabled;
   }
 
+  // Enable/disable auto-adaptation
+  setAutoAdaptEnabled(enabled) {
+    this.config.autoAdaptEnabled = enabled;
+    this.saveBehaviorData();
+
+    if (enabled) {
+      console.log("🎵 Auto-Adapt Mode enabled - playlist will adapt to your listening patterns");
+    } else {
+      console.log("🎵 Auto-Adapt Mode disabled");
+    }
+  }
+
+  isAutoAdaptEnabled() {
+    return this.config.autoAdaptEnabled && this.config.learningEnabled;
+  }
+
   // Start a new session
   startSession() {
     // Save previous session
@@ -676,6 +731,445 @@ Respond in JSON format:
       playbackEvents: []
     };
     localStorage.removeItem("userBehaviorData");
+  }
+
+  // AUTO-ADAPTATION METHODS
+
+  // Main auto-adaptation handler called when user skips
+  async handleAutoAdaptation(skippedTrack, currentPlaylist, reason = "manual_skip") {
+    if (!this.isAutoAdaptEnabled() || !currentPlaylist || !skippedTrack) return null;
+
+    // Check cooldown and session limits
+    if (!this.canPerformAdaptation()) {
+      return null;
+    }
+
+    try {
+      console.log(`🔄 Auto-adapting playlist based on skip: ${skippedTrack.name}`);
+
+      const adaptationActions = await this.calculateAdaptationActions(
+        skippedTrack,
+        currentPlaylist,
+        reason
+      );
+
+      if (adaptationActions.remove.length > 0 || adaptationActions.add.length > 0) {
+        this.adaptationState.lastAdaptationTime = Date.now();
+        this.adaptationState.adaptationsThisSession++;
+
+        return adaptationActions;
+      }
+    } catch (error) {
+      console.error("Auto-adaptation failed:", error);
+    }
+
+    return null;
+  }
+
+  // Check if adaptation can be performed (cooldown, limits, etc.)
+  canPerformAdaptation() {
+    const now = Date.now();
+    const timeSinceLastAdaptation = now - this.adaptationState.lastAdaptationTime;
+
+    return (
+      timeSinceLastAdaptation >= this.config.adaptationCooldown &&
+      this.adaptationState.adaptationsThisSession < this.config.maxAdaptationsPerSession
+    );
+  }
+
+  // Calculate what tracks to remove and add based on user behavior
+  async calculateAdaptationActions(skippedTrack, currentPlaylist, reason) {
+    const actions = {
+      remove: [],
+      add: [],
+      reasoning: []
+    };
+
+    // Step 1: Find similar tracks to remove based on skip patterns
+    const tracksToRemove = await this.findSimilarTracksToRemove(skippedTrack, currentPlaylist);
+
+    // Step 2: Generate replacement tracks based on user preferences
+    const tracksToAdd = await this.generateReplacementTracks(skippedTrack, currentPlaylist);
+
+    actions.remove = tracksToRemove;
+    actions.add = tracksToAdd;
+    actions.reasoning = this.buildAdaptationReasoning(skippedTrack, tracksToRemove, tracksToAdd);
+
+    return actions;
+  }
+
+  // Find tracks similar to the skipped track that should be removed
+  async findSimilarTracksToRemove(skippedTrack, currentPlaylist) {
+    const tracksToRemove = [];
+    const tracks = currentPlaylist.tracks || [];
+
+    // Don't remove too many tracks
+    const maxToRemove = Math.max(1, Math.min(3, Math.floor(tracks.length * 0.3)));
+
+    // Check if playlist would have enough tracks left
+    if (tracks.length - maxToRemove < this.config.minTracksBeforeAdaptation) {
+      return []; // Don't remove if it would make playlist too small
+    }
+
+    // Get user's skip patterns to understand what they don't like
+    const skipPatterns = this.analyzeSkipPatterns();
+
+    for (const track of tracks) {
+      if (tracksToRemove.length >= maxToRemove) break;
+      if (track.id === skippedTrack.id) continue; // Skip the already skipped track
+
+      // Check similarity based on multiple factors
+      const similarity = this.calculateTrackSimilarity(skippedTrack, track);
+
+      if (similarity >= this.config.similarityThreshold) {
+        // Additional check: has this type of track been skipped before?
+        const skipLikelihood = this.calculateSkipLikelihood(track, skipPatterns);
+
+        if (skipLikelihood > 0.6) {
+          // 60% chance user would skip this
+          tracksToRemove.push({
+            track: track,
+            similarity: similarity,
+            skipLikelihood: skipLikelihood,
+            reason: this.getRemovalReason(track, skippedTrack, similarity)
+          });
+        }
+      }
+    }
+
+    return tracksToRemove.sort((a, b) => b.skipLikelihood - a.skipLikelihood);
+  }
+
+  // Calculate similarity between two tracks
+  calculateTrackSimilarity(track1, track2) {
+    let similarity = 0;
+    let factors = 0;
+
+    // Artist similarity (highest weight)
+    const commonArtists = track1.artists?.filter((a1) =>
+      track2.artists?.some((a2) => a1.name.toLowerCase() === a2.name.toLowerCase())
+    );
+    if (commonArtists && commonArtists.length > 0) {
+      similarity += 0.4;
+      factors++;
+    }
+
+    // Album similarity
+    if (track1.album?.name.toLowerCase() === track2.album?.name.toLowerCase()) {
+      similarity += 0.3;
+      factors++;
+    }
+
+    // Genre similarity (if available)
+    if (track1.genres && track2.genres) {
+      const commonGenres = track1.genres.filter((g) => track2.genres.includes(g));
+      if (commonGenres.length > 0) {
+        similarity +=
+          0.2 * (commonGenres.length / Math.max(track1.genres.length, track2.genres.length));
+        factors++;
+      }
+    }
+
+    // Popularity similarity
+    if (track1.popularity && track2.popularity) {
+      const popularityDiff = Math.abs(track1.popularity - track2.popularity);
+      if (popularityDiff < 20) {
+        // Similar popularity
+        similarity += 0.1;
+        factors++;
+      }
+    }
+
+    return factors > 0 ? similarity : 0;
+  }
+
+  // Calculate likelihood that user would skip this track
+  calculateSkipLikelihood(track, skipPatterns) {
+    let skipScore = 0;
+
+    // Check against known skip patterns
+    for (const pattern of skipPatterns) {
+      if (pattern.reason.includes("genre:")) {
+        const genre = pattern.reason.replace("genre:", "");
+        if (track.genres?.includes(genre)) {
+          skipScore += pattern.percentage / 100;
+        }
+      }
+
+      if (pattern.reason === "lowPopularity" && track.popularity < 30) {
+        skipScore += pattern.percentage / 100;
+      }
+    }
+
+    // Check against user's negative preferences
+    const artists = track.artists?.map((a) => a.name) || [];
+    for (const artist of artists) {
+      const artistScore = this.behaviorData.preferences.artists[artist] || 0;
+      if (artistScore < -5) {
+        // Negative preference
+        skipScore += 0.3;
+      }
+    }
+
+    return Math.min(skipScore, 1.0); // Cap at 100%
+  }
+
+  // Generate replacement tracks based on user preferences
+  async generateReplacementTracks(skippedTrack, currentPlaylist) {
+    try {
+      const numToAdd = Math.min(2, 5 - (currentPlaylist.tracks?.length || 0)); // Add 1-2 tracks
+      if (numToAdd <= 0) return [];
+
+      // Build search criteria based on user's positive preferences
+      const searchCriteria = this.buildSearchCriteriaFromPreferences();
+
+      // Search for tracks that match user's preferences
+      const newTracks = await this.searchForBetterTracks(searchCriteria, numToAdd, currentPlaylist);
+
+      return newTracks.map((track) => ({
+        track: track,
+        reason: this.getAdditionReason(track, searchCriteria),
+        confidence: this.calculateTrackFitScore(track)
+      }));
+    } catch (error) {
+      console.error("Failed to generate replacement tracks:", error);
+      return [];
+    }
+  }
+
+  // Build search criteria from user's positive behavior patterns
+  buildSearchCriteriaFromPreferences() {
+    const preferences = this.behaviorData.preferences;
+    const insights = this.behaviorData.insights;
+
+    const criteria = {
+      genres: [],
+      artists: [],
+      characteristics: [],
+      energyLevel: "medium"
+    };
+
+    // Add preferred genres (top 3)
+    if (insights.preferredGenres) {
+      criteria.genres = insights.preferredGenres.slice(0, 3).map((g) => g.name);
+    }
+
+    // Add preferred artists (top 5)
+    if (insights.preferredArtists) {
+      criteria.artists = insights.preferredArtists.slice(0, 5).map((a) => a.name);
+    }
+
+    // Add energy preference
+    if (insights.energyPreference && insights.energyPreference.confidence > 0.5) {
+      criteria.energyLevel = insights.energyPreference.preference;
+    }
+
+    return criteria;
+  }
+
+  // Search for tracks that better match user preferences
+  async searchForBetterTracks(criteria, count, currentPlaylist) {
+    const existingTrackIds = new Set((currentPlaylist.tracks || []).map((t) => t.id));
+    const newTracks = [];
+
+    // Try different search strategies
+    const searchQueries = [
+      ...criteria.artists.map((artist) => `artist:${artist}`),
+      ...criteria.genres.map((genre) => `genre:${genre}`),
+      criteria.energyLevel === "high"
+        ? "high energy"
+        : criteria.energyLevel === "low"
+        ? "chill ambient"
+        : "popular music"
+    ];
+
+    for (const query of searchQueries.slice(0, 3)) {
+      // Limit searches
+      if (newTracks.length >= count) break;
+
+      try {
+        const results = await this.spotifyAPI.searchTracks(query, 10);
+
+        for (const track of results) {
+          if (newTracks.length >= count) break;
+          if (existingTrackIds.has(track.id)) continue;
+
+          // Score the track against user preferences
+          const fitScore = this.calculateTrackFitScore(track);
+          if (fitScore > 0.6) {
+            // Only add tracks with good fit
+            newTracks.push(track);
+            existingTrackIds.add(track.id);
+          }
+        }
+      } catch (error) {
+        console.warn(`Search failed for query: ${query}`, error);
+      }
+    }
+
+    return newTracks.slice(0, count);
+  }
+
+  // Calculate how well a track fits user preferences
+  calculateTrackFitScore(track) {
+    let score = 0;
+    let factors = 0;
+
+    const preferences = this.behaviorData.preferences;
+
+    // Check artist preference
+    const artists = track.artists?.map((a) => a.name) || [];
+    for (const artist of artists) {
+      const artistScore = preferences.artists[artist] || 0;
+      if (artistScore > 0) {
+        score += Math.min(artistScore / 10, 0.4); // Cap at 0.4
+        factors++;
+      }
+    }
+
+    // Check genre preference (if available)
+    if (track.genres) {
+      for (const genre of track.genres) {
+        const genreScore = preferences.genres[genre] || 0;
+        if (genreScore > 0) {
+          score += Math.min(genreScore / 10, 0.3); // Cap at 0.3
+          factors++;
+        }
+      }
+    }
+
+    // Popularity bonus for well-liked tracks
+    if (track.popularity && track.popularity > 50) {
+      score += 0.2;
+      factors++;
+    }
+
+    // Baseline score if no specific preferences
+    if (factors === 0) {
+      score = 0.5; // Neutral score
+    }
+
+    return Math.min(score, 1.0);
+  }
+
+  // Build reasoning for adaptation decisions
+  buildAdaptationReasoning(skippedTrack, tracksToRemove, tracksToAdd) {
+    const reasoning = [];
+
+    if (tracksToRemove.length > 0) {
+      reasoning.push(
+        `Removing ${tracksToRemove.length} similar track(s) based on your skip patterns`
+      );
+      tracksToRemove.forEach((item) => {
+        reasoning.push(`• "${item.track.name}" - ${item.reason}`);
+      });
+    }
+
+    if (tracksToAdd.length > 0) {
+      reasoning.push(`Adding ${tracksToAdd.length} track(s) that better match your preferences`);
+      tracksToAdd.forEach((item) => {
+        reasoning.push(`• "${item.track.name}" - ${item.reason}`);
+      });
+    }
+
+    return reasoning;
+  }
+
+  // Get human-readable reason for removing a track
+  getRemovalReason(track, skippedTrack, similarity) {
+    const reasons = [];
+
+    if (similarity > 0.7) {
+      const commonArtists = track.artists?.filter((a1) =>
+        skippedTrack.artists?.some((a2) => a1.name.toLowerCase() === a2.name.toLowerCase())
+      );
+
+      if (commonArtists && commonArtists.length > 0) {
+        reasons.push(`same artist (${commonArtists[0].name})`);
+      }
+
+      if (track.album?.name === skippedTrack.album?.name) {
+        reasons.push("same album");
+      }
+    }
+
+    return reasons.length > 0 ? reasons.join(", ") : "similar characteristics";
+  }
+
+  // Get human-readable reason for adding a track
+  getAdditionReason(track, criteria) {
+    const reasons = [];
+
+    if (criteria.artists.length > 0) {
+      const matchingArtist = track.artists?.find((a) =>
+        criteria.artists.some((ca) => ca.toLowerCase() === a.name.toLowerCase())
+      );
+      if (matchingArtist) {
+        reasons.push(`you like ${matchingArtist.name}`);
+      }
+    }
+
+    if (criteria.genres.length > 0 && track.genres) {
+      const matchingGenre = track.genres.find((g) => criteria.genres.includes(g));
+      if (matchingGenre) {
+        reasons.push(`matches your ${matchingGenre} preference`);
+      }
+    }
+
+    return reasons.length > 0 ? reasons.join(", ") : "matches your listening patterns";
+  }
+
+  // Reset adaptation state for new session
+  resetAdaptationState() {
+    this.adaptationState = {
+      lastAdaptationTime: 0,
+      adaptationsThisSession: 0,
+      pendingAdaptations: [],
+      currentPlaylistContext: null
+    };
+  }
+  // Get adaptation statistics for UI
+  getAdaptationStats() {
+    return {
+      isEnabled: this.isAutoAdaptEnabled(),
+      adaptationsThisSession: this.adaptationState.adaptationsThisSession,
+      maxAdaptationsPerSession: this.config.maxAdaptationsPerSession,
+      cooldownRemaining: Math.max(
+        0,
+        this.config.adaptationCooldown - (Date.now() - this.adaptationState.lastAdaptationTime)
+      ),
+      canAdaptNow: this.canPerformAdaptation()
+    };
+  }
+
+  // Helper method to safely extract genres from track data
+  extractGenresFromTrack(track) {
+    if (!track) return [];
+
+    // Try different sources for genre information
+    const genres = [];
+
+    // Check track's album for genres
+    if (track.album?.genres?.length > 0) {
+      genres.push(...track.album.genres);
+    }
+
+    // Check track's artists for genres (may be available in artist details)
+    if (track.artists) {
+      for (const artist of track.artists) {
+        if (artist.genres?.length > 0) {
+          genres.push(...artist.genres);
+        }
+      }
+    }
+
+    // Check track itself for genres (may be populated by other API calls)
+    if (track.genres?.length > 0) {
+      genres.push(...track.genres);
+    }
+
+    // Remove duplicates and return
+    return [...new Set(genres)];
   }
 }
 

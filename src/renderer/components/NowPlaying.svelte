@@ -1,6 +1,14 @@
 <script>
   // Props
-  let { spotifyAPI, currentPlayback = $bindable(), behaviorTracker, learningEnabled } = $props();
+  let {
+    spotifyAPI,
+    currentPlayback = $bindable(),
+    behaviorTracker,
+    learningEnabled,
+    analyzeCurrentTrack,
+    currentPlaylist = $bindable(),
+    onAutoAdaptation
+  } = $props();
 
   // State management
   let isVisible = $state(false);
@@ -101,6 +109,24 @@
       // Track behavior for learning if enabled and we have current track info
       if (behaviorTracker && learningEnabled && currentTrack) {
         behaviorTracker.trackSkip(currentTrack, "manual_skip");
+
+        // Trigger auto-adaptation if enabled and we have a current playlist
+        if (behaviorTracker.isAutoAdaptEnabled() && currentPlaylist) {
+          try {
+            const adaptationActions = await behaviorTracker.handleAutoAdaptation(
+              currentTrack,
+              currentPlaylist,
+              "manual_skip"
+            );
+
+            if (adaptationActions && onAutoAdaptation) {
+              // Call the parent handler to actually modify the playlist
+              await onAutoAdaptation(adaptationActions);
+            }
+          } catch (error) {
+            console.error("Auto-adaptation failed:", error);
+          }
+        }
       }
 
       await spotifyAPI.skipTrack();
@@ -215,6 +241,16 @@
         >
           <i class="bi bi-skip-end-fill"></i>
         </button>
+        {#if analyzeCurrentTrack}
+          <button
+            class="btn btn-outline-primary btn-sm"
+            onclick={analyzeCurrentTrack}
+            title="Analyze track and generate playlist suggestions"
+            aria-label="Analyze track"
+          >
+            <i class="bi bi-graph-up"></i>
+          </button>
+        {/if}
       </div>
     </div>
   </div>
