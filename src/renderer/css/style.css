@@ -1,0 +1,299 @@
+/* Custom CSS for plAIlist */
+
+/* Global Styles */
+html,
+body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2d2d2d;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Navigation */
+.navbar-brand {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+/* Cards */
+.card {
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.card-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Form Controls */
+.form-control,
+.form-select {
+  background-color: #3d3d3d;
+  border: 1px solid #555;
+  color: #fff;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: #4d4d4d;
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  color: #fff;
+}
+
+.form-control::placeholder {
+  color: #aaa;
+}
+
+/* Buttons */
+.btn {
+  transition: all 0.3s ease;
+  border-radius: 6px;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: linear-gradient(45deg, #0d6efd, #1e7e34);
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(45deg, #0b5ed7, #198754);
+}
+
+.btn-outline-light:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Playlist Items */
+.playlist-item {
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+
+.playlist-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-left-color: #0d6efd;
+}
+
+.playlist-item.playing {
+  background-color: rgba(13, 110, 253, 0.1);
+  border-left-color: #0d6efd;
+}
+
+.playlist-item.playing .track-title {
+  color: #0d6efd;
+}
+
+.track-artwork {
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.track-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.track-artist {
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.track-duration {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* Progress Bar */
+.progress {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.progress-bar {
+  background: linear-gradient(45deg, #0d6efd, #1e7e34);
+  transition: width 0.3s ease;
+}
+
+/* Now Playing Card */
+#nowPlayingCard {
+  animation: slideInDown 0.5s ease-out;
+  border-left: 4px solid #0d6efd;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading States */
+.loading-shimmer {
+  background: linear-gradient(90deg, #2d2d2d 25%, #3d3d3d 50%, #2d2d2d 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Connection Status */
+.spotify-connected {
+  background: linear-gradient(45deg, #1db954, #1ed760);
+  border: none;
+}
+
+.spotify-disconnected {
+  background: #dc3545;
+  border: none;
+}
+
+/* Range Slider */
+.form-range {
+  background: transparent;
+}
+
+.form-range::-webkit-slider-track {
+  background: #555;
+  border-radius: 3px;
+  height: 6px;
+}
+
+.form-range::-webkit-slider-thumb {
+  background: #0d6efd;
+  border: none;
+  border-radius: 50%;
+  height: 18px;
+  width: 18px;
+  cursor: pointer;
+}
+
+.form-range::-webkit-slider-thumb:hover {
+  background: #0b5ed7;
+}
+
+/* Switch */
+.form-check-input:checked {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+/* Modal */
+.modal-content {
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .card-body {
+    padding: 1rem;
+  }
+
+  .btn-group-vertical .btn {
+    padding: 0.375rem 0.5rem;
+  }
+
+  #trackArtwork {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+/* Utility Classes */
+.text-spotify {
+  color: #1db954;
+}
+
+.bg-spotify {
+  background-color: #1db954;
+}
+
+.border-spotify {
+  border-color: #1db954;
+}
+
+/* List Group Items */
+.list-group-item {
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.list-group-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Icons */
+.bi {
+  vertical-align: -0.125em;
+}
+
+/* Success/Error States */
+.alert {
+  border: none;
+  border-radius: 6px;
+}
+
+.alert-success {
+  background-color: rgba(25, 135, 84, 0.2);
+  color: #75b798;
+  border-left: 4px solid #198754;
+}
+
+.alert-danger {
+  background-color: rgba(220, 53, 69, 0.2);
+  color: #f5b7b1;
+  border-left: 4px solid #dc3545;
+}
+
+.alert-warning {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: #ffd43b;
+  border-left: 4px solid #ffc107;
+}
