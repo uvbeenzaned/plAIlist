@@ -1,3 +1,57 @@
+/* Universal dark mode text fix for all content inside cards, alerts, and list groups */
+body.theme-dark .card,
+body.theme-dark
+  .card
+  *:not(.text-primary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info),
+body.theme-dark .alert,
+body.theme-dark
+  .alert
+  *:not(.text-primary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info),
+body.theme-dark .list-group-item,
+body.theme-dark
+  .list-group-item
+  *:not(.text-primary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info) {
+  color: #fff !important;
+}
+
+body.theme-dark .text-muted {
+  color: #b0b8c1 !important;
+}
+
+body.theme-dark .form-label,
+body.theme-dark label,
+body.theme-dark legend {
+  color: #fff !important;
+}
+
+body.theme-dark .form-check-label {
+  color: #fff !important;
+}
+
+body.theme-dark .input-group-text {
+  color: #fff !important;
+  background: #23272b !important;
+  border-color: #444 !important;
+}
+
+body.theme-dark .form-select,
+body.theme-dark .form-control {
+  color: #fff !important;
+  background: #23272b !important;
+  border-color: #444 !important;
+}
+
+body.theme-dark .form-select:focus,
+body.theme-dark .form-control:focus {
+  color: #fff !important;
+  background: #23272b !important;
+  border-color: #0d6efd !important;
+}
+body.theme-dark .card {
+  background: #23272b !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
 /* Custom CSS for plAIlist */
 
 /* Global Styles */
@@ -9,7 +63,16 @@ body {
 
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body.theme-dark {
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  color: #fff;
+}
+
+body.theme-light {
+  background: linear-gradient(135deg, #f8fafc 0%, #e9ecef 100%);
+  color: #222;
 }
 
 /* Custom Scrollbars */
@@ -32,9 +95,27 @@ body {
 }
 
 /* Navigation */
+
 .navbar-brand {
   font-size: 1.5rem;
   font-weight: bold;
+}
+
+body.theme-dark .navbar-brand,
+body.theme-dark .navbar-brand .bi {
+  color: #fff !important;
+}
+
+body.theme-light .navbar,
+body.theme-light .navbar-brand,
+body.theme-light .navbar-nav .nav-item .btn {
+  background-color: #fff !important;
+  color: #222 !important;
+  border-color: #dee2e6 !important;
+}
+
+body.theme-light .navbar {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 /* Cards */
@@ -48,18 +129,37 @@ body {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
+body.theme-light .card {
+  background: #fff;
+  color: #222;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light .card-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #dee2e6;
+}
+
 .card-header {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
 }
 
 /* Form Controls */
+
 .form-control,
 .form-select {
   background-color: #3d3d3d;
   border: 1px solid #555;
   color: #fff;
   transition: all 0.3s ease;
+}
+
+body.theme-light .form-control,
+body.theme-light .form-select {
+  background-color: #fff;
+  border: 1px solid #ced4da;
+  color: #222;
 }
 
 .form-control:focus,
@@ -70,8 +170,19 @@ body {
   color: #fff;
 }
 
+body.theme-light .form-control:focus,
+body.theme-light .form-select:focus {
+  background-color: #f8fafc;
+  border-color: #0d6efd;
+  color: #222;
+}
+
 .form-control::placeholder {
   color: #aaa;
+}
+
+body.theme-light .form-control::placeholder {
+  color: #888;
 }
 
 /* Buttons */
@@ -93,9 +204,25 @@ body {
   background: linear-gradient(45deg, #0b5ed7, #198754);
 }
 
+body.theme-light .btn-primary {
+  background: linear-gradient(45deg, #0d6efd, #6c757d);
+  color: #fff;
+}
+
 .btn-outline-light:hover {
   background-color: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+body.theme-light .btn-outline-light {
+  color: #222;
+  border-color: #ced4da;
+  background: #fff;
+}
+
+body.theme-light .btn-outline-light:hover {
+  background-color: #f8fafc;
+  border-color: #adb5bd;
 }
 
 /* Playlist Items */
@@ -110,8 +237,18 @@ body {
   border-left-color: #0d6efd;
 }
 
+body.theme-light .playlist-item:hover {
+  background-color: #f1f3f5;
+  border-left-color: #0d6efd;
+}
+
 .playlist-item.playing {
   background-color: rgba(13, 110, 253, 0.1);
+  border-left-color: #0d6efd;
+}
+
+body.theme-light .playlist-item.playing {
+  background-color: #e7f1ff;
   border-left-color: #0d6efd;
 }
 
@@ -129,9 +266,17 @@ body {
   margin-bottom: 2px;
 }
 
+body.theme-light .track-title {
+  color: #0d6efd;
+}
+
 .track-artist {
   color: #aaa;
   font-size: 0.9rem;
+}
+
+body.theme-light .track-artist {
+  color: #495057;
 }
 
 .track-duration {
@@ -139,15 +284,28 @@ body {
   font-size: 0.85rem;
 }
 
+body.theme-light .track-duration {
+  color: #adb5bd;
+}
+
 /* Progress Bar */
+
 .progress {
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 
+body.theme-light .progress {
+  background-color: #e9ecef;
+}
+
 .progress-bar {
   background: linear-gradient(45deg, #0d6efd, #1e7e34);
   transition: width 0.3s ease;
+}
+
+body.theme-light .progress-bar {
+  background: linear-gradient(45deg, #0d6efd, #6c757d);
 }
 
 /* Now Playing Card */
@@ -260,7 +418,37 @@ body {
 }
 
 /* List Group Items */
+
 .list-group-item {
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Add extra contrast for stat boxes in dark mode */
+body.theme-dark .list-group-item.stat-box {
+  background-color: #23272b !important;
+  border-color: #444 !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+body.theme-light .list-group-item.stat-box {
+  background-color: #f8fafc !important;
+  border-color: #dee2e6 !important;
+  color: #222 !important;
+}
+
+body.theme-dark .list-group-item,
+body.theme-dark .list-group-item * {
+  color: #fff !important;
+}
+
+body.theme-light .list-group-item {
+  background-color: #f8fafc;
+  border-color: #dee2e6;
+}
+
+body.theme-dark .list-group-item {
   background-color: transparent;
   border-color: rgba(255, 255, 255, 0.1);
 }

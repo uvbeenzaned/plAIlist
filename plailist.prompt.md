@@ -643,15 +643,27 @@ async function updatePlayback() {
 - [x] Establish git repository workflow with develop branch and version control integration
 - [x] Complete Auto-Adapt Mode functionality with dynamic playlist adaptation and AI integration
 - [x] Fix AI API key loading issue and ensure proper communication between main and renderer processes
+- [x] Implement global Dark/Light Theme Toggle (Navbar button, persistent state, universal CSS, full accessibility for all UI elements)
 - [ ] Package for distribution
 
 ### 🎯 Current Development Focus
 
 **Next Priority Features** (from TODOS.md):
 
-1. **[HIGH]** Dark/Light Theme Toggle - Simple UX improvement
-2. **[HIGH]** In-App API Key Configuration - Settings page for API keys
-3. **[MEDIUM]** Track Caching - Cache metadata for faster generation
+1. **[HIGH]** In-App API Key Configuration - Settings page for API keys
+2. **[MEDIUM]** Track Caching - Cache metadata for faster generation
+
+---
+
+## ✅ Completed Features
+
+### Dark/Light Theme Toggle (Completed May 27, 2025)
+
+- **Status:** Complete and fully integrated
+- **Description:** Added a global dark/light theme toggle to the plAIlist Electron/Svelte 5 app. The toggle is accessible from the Navbar, uses Svelte 5 runes for state management, and persists the user's choice in localStorage. The theme is applied globally to the `<body>` and all UI elements, including cards, alerts, list groups, form controls, and text, ensuring full accessibility and proper contrast in both modes. All stat boxes and sidebar cards use a `.stat-box` class for consistent appearance. The implementation was verified for accessibility and visual correctness in both themes.
+- **Documentation:** See `Navbar.svelte`, `Sidebar.svelte`, and `style.css` for implementation details. This feature is now marked as complete in both `plailist.prompt.md` and `TODOS.md`.
+
+---
 
 **For LLMs**: Always check TODOS.md for the most current priorities and implementation details.
 
@@ -825,6 +837,7 @@ _Last updated: May 27, 2025 - Enhanced with comprehensive LLM guidance_
 - ✅ Advanced User Behavior Learning with AI-powered tracking system
 - ✅ Auto-Adapt Mode with dynamic playlist adaptation and AI integration
 - ✅ Git repository workflow with develop branch and version control integration
+- ✅ Global Dark/Light Theme Toggle (universal theme support for all UI elements, persistent state, full accessibility)
 
 ## 🚀 Active Development & Progress Tracking
 
@@ -843,6 +856,10 @@ _Last updated: May 27, 2025 - Enhanced with comprehensive LLM guidance_
 - **Start Date**: May 27, 2025
 - **Target Completion**: May 27, 2025
 - **Status**: Complete - AI API key loading issue resolved, Auto-Adapt Mode working correctly with AI-powered recommendations
+
+#### 🟢 Progress Note (May 27, 2025)
+
+- **Global Dark/Light Theme Toggle completed**: Implemented a universal theme toggle in the Navbar (Svelte 5 runes), with persistent state in localStorage and automatic theme application on load. Updated all UI elements (cards, alerts, list groups, form controls, text, etc.) for full visibility and accessibility in both dark and light modes. Custom CSS ensures proper contrast and background for all content. Updated documentation and TODOS.md to reflect completion.
 
 #### 📈 **Weekly Progress Checklist**
 

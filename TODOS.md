@@ -60,9 +60,14 @@
 
 ### 🎯 Next 3 Recommended Features
 
-1. **[HIGH]** Dark/Light Theme Toggle - Simple UX improvement with high user value
-2. **[HIGH]** In-App API Key Configuration - Settings page for configuring Spotify API keys within the app
-3. **[MEDIUM]** Track Caching - Cache track metadata for faster playlist generation
+1. **[HIGH]** In-App API Key Configuration - Settings page for configuring Spotify API keys within the app
+2. **[MEDIUM]** Track Caching - Cache track metadata for faster playlist generation
+
+---
+
+### ✅ Recently Completed Features
+
+- **Dark/Light Theme Toggle** - Added a global dark/light theme toggle to the app, accessible from the Navbar. Uses Svelte 5 runes for state management and persists the user's choice in localStorage. Applies the theme globally to all UI elements, including cards, alerts, list groups, form controls, and text, ensuring full accessibility and proper contrast in both modes. Stat boxes and sidebar cards use a `.stat-box` class for consistent appearance. Verified for accessibility and visual correctness in both themes. Updated documentation in `plailist.prompt.md` and marked as complete here. ✅ _Completed May 27, 2025_
 
 ### 📝 Progress Notes
 

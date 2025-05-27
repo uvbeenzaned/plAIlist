@@ -166,7 +166,7 @@
   }
 </script>
 
-<div class="card bg-secondary h-100">
+<div class="card h-100">
   <div class="card-header">
     <h5 class="card-title mb-0">
       <i class="bi bi-magic me-2"></i>

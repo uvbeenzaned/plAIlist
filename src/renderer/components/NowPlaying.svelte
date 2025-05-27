@@ -151,7 +151,7 @@
 </script>
 
 {#if isVisible && currentTrack}
-  <div class="card bg-secondary mb-3">
+  <div class="card mb-3">
     <div class="card-header">
       <div class="d-flex justify-content-between align-items-center">
         <h6 class="card-title mb-0">

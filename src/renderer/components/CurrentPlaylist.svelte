@@ -168,7 +168,7 @@
   }
 </script>
 
-<div class="card bg-secondary h-100">
+<div class="card h-100">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="card-title mb-0">
       <i class="bi bi-music-note-list me-2"></i>
@@ -208,13 +208,13 @@
     <div class="list-group list-group-flush">
       {#if !currentPlaylist}
         <!-- Empty state -->
-        <div class="list-group-item bg-secondary text-center py-5">
+        <div class="list-group-item text-center py-5">
           <i class="bi bi-music-note-beamed display-4 text-muted"></i>
           <p class="text-muted mt-3 mb-0">Generate a playlist to get started!</p>
         </div>
       {:else}
         <!-- Playlist header -->
-        <div class="list-group-item bg-secondary border-bottom">
+        <div class="list-group-item border-bottom">
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <h6 class="mb-1">{playlistInfo?.name || "Generated Playlist"}</h6>
@@ -247,7 +247,7 @@
 
         <!-- Track list -->
         {#each tracks as track, index}
-          <div class="list-group-item bg-secondary border-bottom track-item">
+          <div class="list-group-item border-bottom track-item">
             <div class="d-flex align-items-center">
               <div class="track-number me-3">
                 <small class="text-muted">{index + 1}</small>

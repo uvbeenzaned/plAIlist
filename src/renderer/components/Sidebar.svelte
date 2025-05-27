@@ -127,7 +127,7 @@
 />
 
 <!-- Smart Controls -->
-<div class="card bg-secondary mb-3">
+<div class="card mb-3">
   <div class="card-header">
     <h6 class="card-title mb-0">
       <i class="bi bi-sliders me-2"></i>
@@ -178,13 +178,13 @@
 
         <div class="row g-2 mb-2">
           <div class="col-6">
-            <div class="text-center p-2 bg-dark rounded">
+            <div class="list-group-item stat-box text-center p-2 rounded border">
               <div class="h6 mb-0 text-primary">{behaviorStatistics.totalTracks}</div>
               <small class="text-muted">Tracks analyzed</small>
             </div>
           </div>
           <div class="col-6">
-            <div class="text-center p-2 bg-dark rounded">
+            <div class="list-group-item stat-box text-center p-2 rounded border">
               <div class="h6 mb-0 text-success">
                 {behaviorStatistics.totalTracks > 0
                   ? Math.round(
@@ -290,7 +290,7 @@
 </div>
 
 <!-- Recent Playlists -->
-<div class="card bg-secondary">
+<div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h6 class="card-title mb-0">
       <i class="bi bi-clock-history me-2"></i>
