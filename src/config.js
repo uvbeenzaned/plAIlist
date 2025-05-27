@@ -110,6 +110,53 @@ class Config {
     this.config[section][key] = value;
   }
 
+  // Save configuration changes to .env file
+  saveConfig() {
+    try {
+      const envPath = path.join(__dirname, "..", ".env");
+      let envContent = "";
+
+      // Check if .env exists, if not create from .env.example
+      if (!fs.existsSync(envPath)) {
+        const examplePath = path.join(__dirname, "..", ".env.example");
+        if (fs.existsSync(examplePath)) {
+          envContent = fs.readFileSync(examplePath, "utf8");
+        }
+      } else {
+        envContent = fs.readFileSync(envPath, "utf8");
+      }
+
+      // Update or add configuration values
+      const updates = {
+        SPOTIFY_CLIENT_ID: this.get("spotify", "clientId"),
+        SPOTIFY_CLIENT_SECRET: this.get("spotify", "clientSecret"),
+        OPENAI_API_KEY: this.get("ai", "openaiApiKey"),
+        SPOTIFY_REDIRECT_URI: this.get("spotify", "redirectUri")
+      };
+
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value) {
+          const regex = new RegExp(`^${key}=.*$`, "m");
+          const newLine = `${key}=${value}`;
+
+          if (envContent.match(regex)) {
+            envContent = envContent.replace(regex, newLine);
+          } else {
+            // Add new line if key doesn't exist
+            envContent += `\n${newLine}`;
+          }
+        }
+      });
+
+      fs.writeFileSync(envPath, envContent);
+      console.log("Configuration saved to .env file");
+      return true;
+    } catch (error) {
+      console.error("Failed to save configuration:", error);
+      return false;
+    }
+  }
+
   isConfigured() {
     return this.get("spotify", "clientId") && this.get("ai", "openaiApiKey");
   }

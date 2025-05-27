@@ -1,9 +1,20 @@
 <script>
-  // Import necessary components and stores
+  import Settings from "./components/Settings.svelte";
   import PlaylistGenerator from "./components/PlaylistGenerator.svelte";
   import CurrentPlaylist from "./components/CurrentPlaylist.svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import Navbar from "./components/Navbar.svelte";
+
+  // Settings modal state
+  let showSettings = $state(false);
+
+  function openSettings() {
+    showSettings = true;
+  }
+
+  function closeSettings() {
+    showSettings = false;
+  }
 
   // Import API classes
   import { SpotifyAPI } from "./js/spotify.js";
@@ -651,7 +662,27 @@
 <!-- Main Container -->
 <div class="container-fluid h-100">
   <!-- Header/Navigation -->
-  <Navbar bind:spotifyConnected bind:spotifyAPI />
+  <Navbar bind:spotifyConnected bind:spotifyAPI onOpenSettings={openSettings} />
+  {#if showSettings}
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light border-0">
+          <div class="modal-header bg-dark text-light border-0">
+            <h5 class="modal-title text-light">Settings</h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              aria-label="Close settings"
+              onclick={closeSettings}
+            ></button>
+          </div>
+          <div class="modal-body bg-dark text-light p-0">
+            <Settings />
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <!-- Main Content -->
   <div class="row h-100">

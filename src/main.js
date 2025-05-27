@@ -73,6 +73,33 @@ app.on("activate", () => {
 });
 
 // IPC handlers for communication with renderer process
+ipcMain.handle("get-config", () => {
+  return config.getRendererConfig();
+});
+
+ipcMain.handle("set-api-keys", (event, keys) => {
+  try {
+    // Update config in memory
+    if (keys.spotifyClientId) config.set("spotify", "clientId", keys.spotifyClientId);
+    if (keys.spotifyClientSecret) config.set("spotify", "clientSecret", keys.spotifyClientSecret);
+    if (keys.openaiApiKey) config.set("ai", "openaiApiKey", keys.openaiApiKey);
+
+    // Persist to disk
+    const saved = config.saveConfig();
+
+    return {
+      success: saved,
+      message: saved ? "Configuration saved successfully" : "Failed to save configuration to disk"
+    };
+  } catch (error) {
+    console.error("Error saving API keys:", error);
+    return {
+      success: false,
+      message: "Failed to save configuration"
+    };
+  }
+});
+
 ipcMain.handle("get-app-version", () => {
   return app.getVersion();
 });

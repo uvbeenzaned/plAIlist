@@ -7,14 +7,7 @@
 ## Core Features
 
 - **AI-Driven Playlist Generation**: Users describe their desired music mood/genre/style, and AI generates appropriate Spotify playlists
-- **Dynamic Playlist Management**: Real-time playlist updates based on user listening 7. **✅ History Management** - Complete playlist history with clear functionality
-
-8. **✅ Recent Playlist Deletion** - Delete button for recent playlists with Spotify integration
-9. **✅ Current Playlist Clear** - Clear button in CurrentPlaylist component header
-10. **✅ Enhanced Track Context** - Fixed track playback to maintain playlist flow and continuity
-11. **✅ Advanced User Behavior Learning** - Complete AI-powered behavior tracking system with user action monitoring and algorithm tuning
-12. **✅ Git Repository Integration** - Established version control workflow with develop branch and comprehensive documentationvior
-
+- **Dynamic Playlist Management**: Real-time playlist updates based on user listening
 - **Playback Monitoring**: Track current playback state, user position in tracks, and listening patterns
 - **Spotify Integration**: Full Spotify Web API integration for playlist and playback control
 - **Modern UI**: Bootstrap 5-based responsive interface
@@ -646,22 +639,17 @@ async function updatePlayback() {
 - [x] Implement global Dark/Light Theme Toggle (Navbar button, persistent state, universal CSS, full accessibility for all UI elements)
 - [ ] Package for distribution
 
-### 🎯 Current Development Focus
-
-**Next Priority Features** (from TODOS.md):
-
-1. **[HIGH]** In-App API Key Configuration - Settings page for API keys
-2. **[MEDIUM]** Track Caching - Cache metadata for faster generation
-
 ---
 
-## ✅ Completed Features
+## 📋 Progress & Feature Status
 
-### Dark/Light Theme Toggle (Completed May 27, 2025)
+> **For all progress tracking, priorities, and detailed feature status, see [`TODOS.md`](./TODOS.md).**
 
-- **Status:** Complete and fully integrated
-- **Description:** Added a global dark/light theme toggle to the plAIlist Electron/Svelte 5 app. The toggle is accessible from the Navbar, uses Svelte 5 runes for state management, and persists the user's choice in localStorage. The theme is applied globally to the `<body>` and all UI elements, including cards, alerts, list groups, form controls, and text, ensuring full accessibility and proper contrast in both modes. All stat boxes and sidebar cards use a `.stat-box` class for consistent appearance. The implementation was verified for accessibility and visual correctness in both themes.
-- **Documentation:** See `Navbar.svelte`, `Sidebar.svelte`, and `style.css` for implementation details. This feature is now marked as complete in both `plailist.prompt.md` and `TODOS.md`.
+This file provides technical documentation, LLM instructions, and high-level feature summaries only.
+
+### ✅ Recently Completed Features (Summary)
+
+- **Dark/Light Theme Toggle**: Global theme toggle in Navbar, persistent state, universal CSS, full accessibility for all UI elements. (See `TODOS.md` for details)
 
 ---
 
@@ -791,53 +779,7 @@ _Last updated: May 27, 2025 - Enhanced with comprehensive LLM guidance_
 - [x] Fix AI API key loading issue and ensure proper communication between main and renderer processes
 - [ ] Package for distribution
 
-## Completed Features
-
-### Core Infrastructure
-
-- ✅ Electron main process with secure IPC
-- ✅ Preload script for secure communication
-- ✅ Bootstrap 5 UI with dark theme
-- ✅ Custom CSS with modern styling
-- ✅ Environment variable management
-
-### Spotify Integration
-
-- ✅ OAuth 2.0 authentication flow
-- ✅ Token management with refresh capability
-- ✅ Real-time playback monitoring
-- ✅ Playlist creation and management
-- ✅ Track search functionality
-- ✅ Playback controls (play/pause/skip)
-
-### AI Features
-
-- ✅ OpenAI GPT-4o integration with intelligent model fallbacks
-- ✅ Cost-optimized GPT-4o-mini as primary model (94% cost savings)
-- ✅ Natural language playlist description processing
-- ✅ Intelligent track search and ranking
-- ✅ Automatic playlist naming with creative algorithms
-- ✅ Sophisticated fallback algorithms when AI quota exceeded
-- ✅ Quota warning system with graceful degradation
-- ✅ Support for multiple OpenAI models with automatic failover
-- ✅ Enhanced algorithmic generation with decade/artist/mood detection
-
-### User Interface
-
-- ✅ Responsive 3-column layout
-- ✅ Real-time now playing display with Bootstrap progress bars and sidebar integration
-- ✅ Interactive playlist view with track controls
-- ✅ Recent playlists history with delete functionality
-- ✅ Smart controls (auto-adapt, discovery level)
-- ✅ Status notifications and loading states
-- ✅ Consistent card-based design with proper styling integration
-- ✅ Clear current playlist functionality with confirmation dialogs
-- ✅ Enhanced track context playback within playlists
-- ✅ Playlist templates with visual selection interface
-- ✅ Advanced User Behavior Learning with AI-powered tracking system
-- ✅ Auto-Adapt Mode with dynamic playlist adaptation and AI integration
-- ✅ Git repository workflow with develop branch and version control integration
-- ✅ Global Dark/Light Theme Toggle (universal theme support for all UI elements, persistent state, full accessibility)
+## (See `TODOS.md` for full completed feature list and details)
 
 ## 🚀 Active Development & Progress Tracking
 
@@ -1034,10 +976,10 @@ Get-ChildItem -Path "src\" -Include "*.js","*.svelte" -Recurse | Select-String "
 
 ### 🎯 Quick Reference Links
 
-- **📋 [View All TODOs](./TODOS.md)** - Complete feature roadmap
-- **🔥 [HIGH Priority Features](./TODOS.md#-high-priority---user-experience-enhancements)**
-- **⚙️ [MEDIUM Priority Features](./TODOS.md#-medium-priority---technical-improvements)**
-- **🌟 [LOW Priority Features](./TODOS.md#-low-priority---platform-expansion)**
+- **📋 [View All TODOs](TODOS.md)** - Complete feature roadmap
+- **🔥 [HIGH Priority Features](TODOS.md#high-priority)**
+- **⚙️ [MEDIUM Priority Features](TODOS.md#medium-priority)**
+- **🌟 [LOW Priority Features](TODOS.md#low-priority)**
 
 ---
 

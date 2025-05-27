@@ -1,7 +1,7 @@
 <script>
   import { SpotifyAPI } from "../js/spotify.js";
   // Props
-  let { spotifyConnected = $bindable(), spotifyAPI = $bindable() } = $props();
+  let { spotifyConnected = $bindable(), spotifyAPI = $bindable(), onOpenSettings } = $props();
   // Spotify API instance
   let localSpotifyAPI = $state(null);
 
@@ -95,6 +95,16 @@
           {:else}
             <i class="bi bi-sun"></i>
           {/if}
+        </button>
+      </div>
+      <div class="nav-item">
+        <button
+          class="btn btn-outline-light btn-sm"
+          title="Settings"
+          aria-label="Open Settings"
+          onclick={onOpenSettings}
+        >
+          <i class="bi bi-gear"></i>
         </button>
       </div>
     </div>
