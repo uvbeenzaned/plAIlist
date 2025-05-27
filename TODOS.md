@@ -50,13 +50,13 @@
 ### 📈 Completion Statistics
 
 - **CRITICAL Priority**: 1/1 completed (100%) ✅
-- **HIGH Priority**: 16/20 completed (80%)
+- **HIGH Priority**: 16/21 completed (76%)
 - **MEDIUM Priority**: 1/37 completed (3%)
 - **LOW Priority**: 0/25 completed (0%)
 - **Bug Fixes**: 3/15 completed (20%)
 - **Experimental**: 0/12 completed (0%)
 - **Deployment**: 1/12 completed (8%) ✅
-- **TOTAL**: 23/122 features completed (19%)
+- **TOTAL**: 23/123 features completed (19%)
 
 ### 🎯 Next 3 Recommended Features
 
@@ -128,6 +128,7 @@
 - [x] **Now Playing Component Redesign** - Redesign now playing display to match application styling and position in sidebar _(Completed: May 26, 2025)_
 - [x] **In-App API Key Configuration** - Complete settings modal accessible from the Navbar that allows users to view and update Spotify and OpenAI API keys directly within the app. Features Svelte 5 runes implementation, dark theme integration, Electron IPC communication for secure config management, automatic .env file creation/updates, real-time validation, and user-friendly success/error messaging _(Completed: May 27, 2025)_
 - [x] **Dark/Light Theme Toggle** - Added a global dark/light theme toggle to the app, accessible from the Navbar. Uses Svelte 5 runes for state management and persists the user's choice in localStorage. Applies the theme globally to all UI elements with full accessibility and proper contrast in both modes _(Completed: May 27, 2025)_
+- [ ] **Bootstrap 5 Dark Classes Unification** - Refactor the entire application to use native Bootstrap 5 dark classes (`data-bs-theme="dark"`, `.text-bg-dark`, `.btn-outline-light`, etc.) instead of custom dark/light styling. Move component-specific CSS into individual Svelte component `<style>` blocks for better encapsulation and maintainability. This will reduce CSS conflicts, improve consistency, and leverage Bootstrap's built-in dark mode capabilities
 - [ ] **Custom Themes** - Allow users to create custom color schemes
 - [ ] **Playlist Visualization** - Visual representation of playlist energy/mood flow
 - [ ] **Mini Player Mode** - Compact mode for desktop overlay
