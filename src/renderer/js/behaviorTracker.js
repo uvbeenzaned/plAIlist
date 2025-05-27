@@ -137,7 +137,6 @@ class BehaviorTracker {
       .filter((session) => session.startTime > cutoff)
       .slice(-100); // Keep last 100 sessions
   }
-
   // Setup event tracking for user interactions
   setupEventTracking() {
     // Track when users skip tracks via playback monitoring
@@ -146,6 +145,25 @@ class BehaviorTracker {
         this.handlePlaybackUpdate(playback);
       });
     }
+  }
+
+  // Ensure AI generator is ready before using it
+  async ensureAIReady() {
+    if (!this.aiGenerator) return false;
+
+    // Wait for up to 3 seconds for AI to initialize
+    const maxWaitTime = 3000;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitTime) {
+      if (this.aiGenerator.hasApiKey !== undefined) {
+        return true;
+      }
+      // Wait 100ms before checking again
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    return false;
   }
 
   // Handle playback state updates to detect skips and listening patterns
@@ -251,36 +269,45 @@ class BehaviorTracker {
 
     this.saveBehaviorData();
   }
-
   // Update user preferences based on interaction
   updatePreferences(interaction) {
     const { preferences } = this.behaviorData;
     const { trackInfo, behavior, context } = interaction;
 
+    // Safety check for trackInfo
+    if (!trackInfo) {
+      console.warn("🚨 BehaviorTracker: trackInfo is missing, skipping preference update");
+      return;
+    }
+
     // Weight for preference updates (likes = +2, partials = +1, skips = -1)
     const weight = behavior === "like" ? 2 : behavior === "partial" ? 1 : -1;
 
-    // Update artist preferences
-    trackInfo.artists.forEach((artist) => {
-      preferences.artists[artist] = (preferences.artists[artist] || 0) + weight;
+    // Update artist preferences - safely extract artist names
+    const artists = trackInfo.artists || [];
+    artists.forEach((artist) => {
+      const artistName = typeof artist === "string" ? artist : artist.name;
+      if (artistName) {
+        preferences.artists[artistName] = (preferences.artists[artistName] || 0) + weight;
+      }
     });
 
-    // Update genre preferences
-    trackInfo.genres.forEach((genre) => {
+    // Update genre preferences - use extractGenresFromTrack method
+    const genres = this.extractGenresFromTrack(trackInfo);
+    genres.forEach((genre) => {
       preferences.genres[genre] = (preferences.genres[genre] || 0) + weight;
     });
 
     // Update time of day preferences
-    const timeKey = context.timeOfDay;
+    const timeKey = context?.timeOfDay || "unknown";
     if (!preferences.timeOfDay[timeKey]) {
       preferences.timeOfDay[timeKey] = { likes: 0, skips: 0, partials: 0 };
     }
-    preferences.timeOfDay[timeKey][behavior]++;
-
-    // Energy preference (simplified)
-    if (trackInfo.popularity > 70) {
+    preferences.timeOfDay[timeKey][behavior]++; // Energy preference (simplified) - use default popularity if not available
+    const popularity = trackInfo.popularity || 50;
+    if (popularity > 70) {
       preferences.energy.high += weight;
-    } else if (trackInfo.popularity > 40) {
+    } else if (popularity > 40) {
       preferences.energy.medium += weight;
     } else {
       preferences.energy.low += weight;
@@ -355,22 +382,24 @@ class BehaviorTracker {
 
   analyzeSkipPatterns() {
     const recentInteractions = this.behaviorData.interactions.slice(-200);
-    const skippedTracks = recentInteractions.filter((i) => i.behavior === "skip");
-
-    // Find common patterns in skipped tracks
+    const skippedTracks = recentInteractions.filter((i) => i.behavior === "skip"); // Find common patterns in skipped tracks
     const skipReasons = {};
 
     skippedTracks.forEach((interaction) => {
       // Analyze common characteristics of skipped tracks
       const { trackInfo } = interaction;
 
+      // Safety check for trackInfo
+      if (!trackInfo) return;
+
       // Low popularity songs get skipped more
-      if (trackInfo.popularity < 30) {
+      if (trackInfo.popularity && trackInfo.popularity < 30) {
         skipReasons["lowPopularity"] = (skipReasons["lowPopularity"] || 0) + 1;
       }
 
-      // Genre-based skipping
-      trackInfo.genres.forEach((genre) => {
+      // Genre-based skipping - use extractGenresFromTrack method
+      const genres = this.extractGenresFromTrack(trackInfo);
+      genres.forEach((genre) => {
         skipReasons[`genre:${genre}`] = (skipReasons[`genre:${genre}`] || 0) + 1;
       });
     });
@@ -425,14 +454,16 @@ class BehaviorTracker {
       confidence: Math.abs(preferred[1]),
       scores
     };
-  }
-  // Generate AI-powered recommendations based on behavior
+  } // Generate AI-powered recommendations based on behavior
   async generateRecommendations() {
     if (!this.aiGenerator || !this.config.learningEnabled) {
       return this.generateAlgorithmicRecommendations();
     }
 
     // Check if AI is actually configured before attempting to use it
+    // Wait a moment for AI generator to finish initialization if needed
+    await this.ensureAIReady();
+
     if (!this.aiGenerator.hasApiKey) {
       console.log("🎵 Using algorithmic recommendations (AI not configured)");
       return this.generateAlgorithmicRecommendations();
@@ -839,15 +870,21 @@ Respond in JSON format:
 
     return tracksToRemove.sort((a, b) => b.skipLikelihood - a.skipLikelihood);
   }
-
   // Calculate similarity between two tracks
   calculateTrackSimilarity(track1, track2) {
     let similarity = 0;
     let factors = 0;
 
     // Artist similarity (highest weight)
+    // Safely extract artist names handling both string and object formats
+    const getArtistName = (artist) => (typeof artist === "string" ? artist : artist?.name || "");
+
     const commonArtists = track1.artists?.filter((a1) =>
-      track2.artists?.some((a2) => a1.name.toLowerCase() === a2.name.toLowerCase())
+      track2.artists?.some((a2) => {
+        const name1 = getArtistName(a1).toLowerCase();
+        const name2 = getArtistName(a2).toLowerCase();
+        return name1 && name2 && name1 === name2;
+      })
     );
     if (commonArtists && commonArtists.length > 0) {
       similarity += 0.4;
@@ -855,7 +892,11 @@ Respond in JSON format:
     }
 
     // Album similarity
-    if (track1.album?.name.toLowerCase() === track2.album?.name.toLowerCase()) {
+    if (
+      track1.album?.name &&
+      track2.album?.name &&
+      track1.album.name.toLowerCase() === track2.album.name.toLowerCase()
+    ) {
       similarity += 0.3;
       factors++;
     }
@@ -899,10 +940,11 @@ Respond in JSON format:
       if (pattern.reason === "lowPopularity" && track.popularity < 30) {
         skipScore += pattern.percentage / 100;
       }
-    }
+    } // Check against user's negative preferences
+    // Safely extract artist names handling both string and object formats
+    const getArtistName = (artist) => (typeof artist === "string" ? artist : artist?.name || "");
+    const artists = track.artists?.map(getArtistName).filter((name) => name) || [];
 
-    // Check against user's negative preferences
-    const artists = track.artists?.map((a) => a.name) || [];
     for (const artist of artists) {
       const artistScore = this.behaviorData.preferences.artists[artist] || 0;
       if (artistScore < -5) {
@@ -1015,10 +1057,11 @@ Respond in JSON format:
     let score = 0;
     let factors = 0;
 
-    const preferences = this.behaviorData.preferences;
+    const preferences = this.behaviorData.preferences; // Check artist preference
+    // Safely extract artist names handling both string and object formats
+    const getArtistName = (artist) => (typeof artist === "string" ? artist : artist?.name || "");
+    const artists = track.artists?.map(getArtistName).filter((name) => name) || [];
 
-    // Check artist preference
-    const artists = track.artists?.map((a) => a.name) || [];
     for (const artist of artists) {
       const artistScore = preferences.artists[artist] || 0;
       if (artistScore > 0) {
@@ -1074,38 +1117,58 @@ Respond in JSON format:
 
     return reasoning;
   }
-
   // Get human-readable reason for removing a track
   getRemovalReason(track, skippedTrack, similarity) {
     const reasons = [];
 
     if (similarity > 0.7) {
+      // Safely extract artist names handling both string and object formats
+      const getArtistName = (artist) => (typeof artist === "string" ? artist : artist?.name || "");
+
       const commonArtists = track.artists?.filter((a1) =>
-        skippedTrack.artists?.some((a2) => a1.name.toLowerCase() === a2.name.toLowerCase())
+        skippedTrack.artists?.some((a2) => {
+          const name1 = getArtistName(a1).toLowerCase();
+          const name2 = getArtistName(a2).toLowerCase();
+          return name1 && name2 && name1 === name2;
+        })
       );
 
       if (commonArtists && commonArtists.length > 0) {
-        reasons.push(`same artist (${commonArtists[0].name})`);
+        const artistName = getArtistName(commonArtists[0]);
+        if (artistName) {
+          reasons.push(`same artist (${artistName})`);
+        }
       }
 
-      if (track.album?.name === skippedTrack.album?.name) {
+      if (
+        track.album?.name &&
+        skippedTrack.album?.name &&
+        track.album.name === skippedTrack.album.name
+      ) {
         reasons.push("same album");
       }
     }
 
     return reasons.length > 0 ? reasons.join(", ") : "similar characteristics";
   }
-
   // Get human-readable reason for adding a track
   getAdditionReason(track, criteria) {
     const reasons = [];
 
     if (criteria.artists.length > 0) {
-      const matchingArtist = track.artists?.find((a) =>
-        criteria.artists.some((ca) => ca.toLowerCase() === a.name.toLowerCase())
-      );
+      // Safely extract artist names handling both string and object formats
+      const getArtistName = (artist) => (typeof artist === "string" ? artist : artist?.name || "");
+
+      const matchingArtist = track.artists?.find((a) => {
+        const artistName = getArtistName(a).toLowerCase();
+        return artistName && criteria.artists.some((ca) => ca.toLowerCase() === artistName);
+      });
+
       if (matchingArtist) {
-        reasons.push(`you like ${matchingArtist.name}`);
+        const artistName = getArtistName(matchingArtist);
+        if (artistName) {
+          reasons.push(`you like ${artistName}`);
+        }
       }
     }
 

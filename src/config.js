@@ -15,6 +15,7 @@ class Config {
     try {
       // Load .env file if it exists
       const envPath = path.join(__dirname, "..", ".env");
+
       if (fs.existsSync(envPath)) {
         require("dotenv").config({ path: envPath });
       }
@@ -50,8 +51,15 @@ class Config {
           rateLimitRequests: 100
         }
       };
-
       console.log("Configuration loaded successfully");
+
+      // Debug final configuration
+      console.log("🔍 Config Debug: Final AI config:", {
+        hasOpenAIKey: !!this.config.ai.openaiApiKey,
+        keyPrefix: this.config.ai.openaiApiKey
+          ? this.config.ai.openaiApiKey.substring(0, 10) + "..."
+          : "undefined"
+      });
     } catch (error) {
       console.error("Failed to load configuration:", error);
       this.config = this.getDefaultConfig();
@@ -143,7 +151,7 @@ class Config {
     };
   } // Safely expose configuration to renderer process
   getRendererConfig() {
-    return {
+    const rendererConfig = {
       spotify: {
         clientId: this.get("spotify", "clientId"),
         clientSecret: this.get("spotify", "clientSecret"), // Added for development
@@ -163,6 +171,8 @@ class Config {
         maxPlaylistSize: this.get("security", "maxPlaylistSize")
       }
     };
+
+    return rendererConfig;
   }
 }
 

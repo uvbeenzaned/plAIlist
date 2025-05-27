@@ -170,6 +170,7 @@
             class="btn btn-outline-primary btn-sm"
             onclick={refreshBehaviorInsights}
             title="Refresh insights"
+            aria-label="Refresh behavior insights"
           >
             <i class="bi bi-arrow-clockwise"></i>
           </button>

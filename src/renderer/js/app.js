@@ -23,10 +23,10 @@ class PlAIlistApp {
       const configValidation = await window.electronAPI.validateConfig();
       if (!configValidation.isValid) {
         this.showConfigurationWarning(configValidation.errors);
-      }
+      } // Initialize Spotify API
+      this.spotifyAPI = new SpotifyAPI();
 
-      // Initialize Spotify API
-      this.spotifyAPI = new SpotifyAPI(); // Initialize AI Generator
+      // Initialize AI Generator
       this.aiGenerator = new AIPlaylistGenerator(this.spotifyAPI);
 
       // Wait for AI generator to fully initialize before checking quota
@@ -37,9 +37,7 @@ class PlAIlistApp {
       // Set up event listeners
       this.setupEventListeners();
 
-      // Load any saved state
-      await this.loadAppState();
-
+      // Load any saved state      await this.loadAppState();
       console.log("plAIlist app initialized");
       this.showWelcomeMessage();
     } catch (error) {

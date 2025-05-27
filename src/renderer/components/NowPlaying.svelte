@@ -162,6 +162,7 @@
           class="btn btn-outline-light btn-sm"
           onclick={openInSpotify}
           title="Open in Spotify"
+          aria-label="Open current track in Spotify"
         >
           <i class="bi bi-spotify"></i>
         </button>

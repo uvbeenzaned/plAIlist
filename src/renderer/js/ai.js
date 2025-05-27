@@ -11,11 +11,12 @@ class AIPlaylistGenerator {
 
     this.init();
   }
-
   async init() {
     try {
       // Load app configuration
-      this.appConfig = await window.electronAPI.getAppConfig(); // Load AI API credentials
+      this.appConfig = await window.electronAPI.getAppConfig();
+
+      // Load AI API credentials
       await this.loadAPICredentials();
     } catch (error) {
       console.error("Failed to initialize AI Playlist Generator:", error);
@@ -34,6 +35,7 @@ class AIPlaylistGenerator {
       console.warn("AI API key not configured. AI features will use fallback algorithms.");
     }
   }
+
   async generatePlaylist(description, length = 25, playlistName = null) {
     try {
       // Step 1: Generate playlist concept and search terms using AI
