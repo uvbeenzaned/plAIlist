@@ -394,8 +394,26 @@ class SpotifyAPI {
       throw new Error(errorMessage);
     }
 
+    // Handle specific case for /me/player/next if it returns 200 OK instead of 204
+    if (endpoint === "/me/player/next" && response.status === 200) {
+      console.log(
+        `SpotifyAPI: Endpoint ${endpoint} returned 200 OK (expected 204). Treating as success without content.`
+      );
+      // Attempt to consume the body to prevent issues, but don't parse if not expected.
+      try {
+        await response.text(); // Consume the body
+      } catch (e) {
+        // Ignore errors consuming an unexpected body
+      }
+      return {}; // Return empty object as if it were a 204
+    }
+
     // Some Spotify endpoints return empty responses (like PUT requests)
     const contentLength = response.headers.get("content-length");
+    console.log(
+      `SpotifyAPI: makeApiRequest for ${endpoint} - Status: ${response.status}, Content-Length: ${contentLength}`
+    ); // ADD THIS LOG
+
     if (contentLength === "0" || response.status === 204) {
       return {}; // Return empty object for empty responses
     }
@@ -778,13 +796,12 @@ class SpotifyAPI {
     try {
       await this.ensureActiveDevice();
 
-      // Create a playlist starting from the specified index
-      const tracksToPlay = trackUris.slice(startIndex);
-
+      // Play the full list of URIs, starting at the specified startIndex
       await this.makeApiRequest("/me/player/play", {
         method: "PUT",
         body: JSON.stringify({
-          uris: tracksToPlay
+          uris: trackUris, // Send the full list of URIs
+          offset: { position: startIndex } // Specify the starting position
         })
       });
     } catch (error) {
@@ -792,6 +809,37 @@ class SpotifyAPI {
       throw error;
     }
   }
+
+  async queueTrack(trackUri) {
+    try {
+      await this.ensureActiveDevice();
+      // The endpoint is /me/player/queue and requires the track URI as a query parameter
+      await this.makeApiRequest(`/me/player/queue?uri=${encodeURIComponent(trackUri)}`, {
+        method: "POST"
+        // No body is needed for this request
+      });
+      console.log(`SpotifyAPI: Successfully queued track ${trackUri}`);
+    } catch (error) {
+      console.error("Failed to queue track:", error);
+      if (error.message.includes("No active Spotify device")) {
+        this.showNotification(
+          "No active Spotify device found. Please open Spotify on your phone or computer first.",
+          "error"
+        );
+      } else if (error.message.includes("403") || error.message.includes("Premium required")) {
+        this.showNotification("Spotify Premium is required to queue tracks.", "error");
+      } else if (error.message.includes("404") && error.message.includes("Device not found")) {
+        this.showNotification(
+          "No active Spotify device found. Please open Spotify on your phone or computer first.",
+          "error"
+        );
+      }
+      // Do not re-throw for queueing, as it's a non-critical enhancement.
+      // The main playlist modification will still proceed.
+      // throw error; // Optional: re-throw if queueing failure should halt other processes
+    }
+  }
+
   // Audio Features Analysis
   async getAudioFeatures(trackId) {
     try {

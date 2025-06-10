@@ -83,6 +83,12 @@
       // Load any saved state
       await loadAppState();
 
+      // Automatically load the most recent playlist if available
+      if (recentPlaylists && recentPlaylists.length > 0) {
+        await loadSavedPlaylist(recentPlaylists[0]); // Use loadSavedPlaylist
+        console.log(`Automatically loaded last playlist: "${recentPlaylists[0].name}"`);
+      }
+
       // Set up behavior insights update interval
       if (behaviorTracker && learningEnabled) {
         // Update insights every 5 minutes
@@ -217,6 +223,7 @@
   function clearPlaylistHistory() {
     recentPlaylists = [];
     localStorage.removeItem("recentPlaylists");
+    showInfo("Playlist history cleared."); // Added user feedback
   }
 
   async function loadSavedPlaylist(savedPlaylist) {
@@ -440,11 +447,14 @@
       const track = currentPlayback.item;
       showInfo("Analyzing track metadata...");
 
-      // Get detailed track information (handle potential null responses)
+      // Get detailed track information
+      // The spotifyAPI methods getAudioFeatures, getTrackDetails, getArtistDetails
+      // already return null if data is not found/forbidden (403/404).
+      // Other errors will propagate to the catch block below.
       const [audioFeatures, trackDetails, artistDetails] = await Promise.all([
-        spotifyAPI.getAudioFeatures(track.id).catch(() => null),
-        spotifyAPI.getTrackDetails(track.id).catch(() => null),
-        spotifyAPI.getArtistDetails(track.artists[0].id).catch(() => null)
+        spotifyAPI.getAudioFeatures(track.id),
+        spotifyAPI.getTrackDetails(track.id),
+        spotifyAPI.getArtistDetails(track.artists[0].id)
       ]);
 
       // Check if we have enough data to proceed
@@ -652,7 +662,127 @@
     showInfo("Suggested prompt has been loaded into the playlist generator!");
   }
 
-  // ...existing code...
+  async function handleTrackSkip(skippedTrackRaw) {
+    if (!currentPlaylist.value || !behaviorTracker) return;
+    console.log("App: Handling track skip for:", skippedTrackRaw?.name);
+
+    // Ensure skippedTrackRaw is the actual track object, not an event or wrapper
+    const skippedTrack = skippedTrackRaw?.uri ? skippedTrackRaw : currentPlayback.value?.item;
+
+    if (!skippedTrack || !skippedTrack.id) {
+      console.warn("App: Invalid skipped track data received in handleTrackSkip.");
+      showNotification("Could not process skip: invalid track data.", "warning");
+      return;
+    }
+
+    // Create trackInfo for behavior tracking
+    const skippedTrackInfo = {
+      id: skippedTrack.id,
+      name: skippedTrack.name,
+      artists: skippedTrack.artists?.map((a) => a.name) || [],
+      album: skippedTrack.album?.name,
+      genres: behaviorTracker.extractGenresFromTrack(skippedTrack),
+      popularity: skippedTrack.popularity || 50,
+      duration_ms: skippedTrack.duration_ms,
+      uri: skippedTrack.uri
+    };
+
+    behaviorTracker.trackSkip(skippedTrackInfo, "manual_skip_button");
+
+    if (behaviorTracker.isAutoAdaptEnabled()) {
+      const adaptationActions = await behaviorTracker.handleAutoAdaptation(
+        skippedTrack, // Pass the raw Spotify track object as expected by handleAutoAdaptation
+        currentPlaylist.value,
+        "manual_skip_button"
+      );
+
+      if (adaptationActions) {
+        console.log("App: Adaptation actions received:", adaptationActions);
+        let playlistModified = false;
+        const currentTracks = currentPlaylist.value.tracks ? [...currentPlaylist.value.tracks] : [];
+        let finalTracks = [...currentTracks];
+
+        // Process removals
+        if (adaptationActions.remove && adaptationActions.remove.length > 0) {
+          const trackUrisToRemove = adaptationActions.remove.map((item) => item.track.uri);
+          try {
+            await spotify.removeTracksFromPlaylist(
+              currentPlaylist.value.playlist.id,
+              trackUrisToRemove
+            );
+            finalTracks = finalTracks.filter((track) => !trackUrisToRemove.includes(track.uri));
+            playlistModified = true;
+            showNotification(
+              `Auto-Adapt: Removed ${adaptationActions.remove.length} track(s).`,
+              "info"
+            );
+          } catch (error) {
+            console.error("App: Error removing tracks during auto-adaptation:", error);
+            showNotification("Auto-Adapt: Failed to remove tracks.", "error");
+          }
+        }
+
+        // Process additions
+        if (adaptationActions.add && adaptationActions.add.length > 0) {
+          const trackUrisToAdd = adaptationActions.add.map((item) => item.track.uri);
+          const tracksToAddObjects = adaptationActions.add.map((item) => item.track);
+          try {
+            await spotify.addTracksToPlaylist(currentPlaylist.value.playlist.id, trackUrisToAdd);
+            finalTracks.push(...tracksToAddObjects);
+            playlistModified = true;
+            showNotification(
+              `Auto-Adapt: Added ${adaptationActions.add.length} track(s).`,
+              "success"
+            );
+
+            // Queue newly added tracks
+            if (trackUrisToAdd.length > 0) {
+              console.log("App: Queueing newly added tracks:", trackUrisToAdd);
+              for (const uri of trackUrisToAdd) {
+                try {
+                  await spotify.queueTrack(uri);
+                  // Small delay to avoid overwhelming the API, though Spotify might handle it.
+                  await new Promise((resolve) => setTimeout(resolve, 200));
+                } catch (queueError) {
+                  console.warn(`App: Failed to queue track ${uri}:`, queueError.message);
+                  // Notify user if a specific track fails to queue, but don't stop others.
+                  showNotification(
+                    `Failed to queue one of the new tracks. Playback might not be seamless.`,
+                    "warning"
+                  );
+                }
+              }
+              showNotification(
+                `Queued ${trackUrisToAdd.length} new track(s) for playback.`,
+                "info"
+              );
+            }
+          } catch (error) {
+            console.error("App: Error adding tracks during auto-adaptation:", error);
+            showNotification("Auto-Adapt: Failed to add tracks.", "error");
+          }
+        }
+
+        if (playlistModified) {
+          currentPlaylist.value = {
+            ...currentPlaylist.value,
+            tracks: finalTracks
+            // Update other playlist metadata if necessary
+          };
+          saveCurrentPlaylistToHistory(); // Save updated playlist
+          console.log("App: Playlist updated after auto-adaptation:", currentPlaylist.value);
+        }
+
+        if (adaptationActions.reasoning && adaptationActions.reasoning.length > 0) {
+          const reasoningMessage = adaptationActions.reasoning.join("\n");
+          showNotification(`Auto-Adapt Reasoning:\n${reasoningMessage}`, "info", 10000); // Longer duration for reasoning
+        }
+      } else {
+        console.log("App: No adaptation actions to perform or auto-adapt is off/on cooldown.");
+      }
+    }
+    await refreshBehaviorInsights();
+  }
 </script>
 
 <svelte:head>
@@ -716,13 +846,11 @@
         {toggleLearningEnabled}
         {refreshBehaviorInsights}
         behaviorStatistics={getBehaviorStatistics()}
-        {trackSkipAction}
-        {trackLikeAction}
-        {trackRemovalAction}
         {behaviorTracker}
         {analyzeCurrentTrack}
         bind:currentPlaylist
         {handleAutoAdaptation}
+        {showNotification}
       />
     </div>
   </div>

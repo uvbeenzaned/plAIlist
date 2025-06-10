@@ -1,57 +1,3 @@
-/* Universal dark mode text fix for all content inside cards, alerts, and list groups */
-body.theme-dark .card,
-body.theme-dark
-  .card
-  *:not(.text-primary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info),
-body.theme-dark .alert,
-body.theme-dark
-  .alert
-  *:not(.text-primary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info),
-body.theme-dark .list-group-item,
-body.theme-dark
-  .list-group-item
-  *:not(.text-primary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info) {
-  color: #fff !important;
-}
-
-body.theme-dark .text-muted {
-  color: #b0b8c1 !important;
-}
-
-body.theme-dark .form-label,
-body.theme-dark label,
-body.theme-dark legend {
-  color: #fff !important;
-}
-
-body.theme-dark .form-check-label {
-  color: #fff !important;
-}
-
-body.theme-dark .input-group-text {
-  color: #fff !important;
-  background: #23272b !important;
-  border-color: #444 !important;
-}
-
-body.theme-dark .form-select,
-body.theme-dark .form-control {
-  color: #fff !important;
-  background: #23272b !important;
-  border-color: #444 !important;
-}
-
-body.theme-dark .form-select:focus,
-body.theme-dark .form-control:focus {
-  color: #fff !important;
-  background: #23272b !important;
-  border-color: #0d6efd !important;
-}
-body.theme-dark .card {
-  background: #23272b !important;
-  color: #fff !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-}
 /* Custom CSS for plAIlist */
 
 /* Global Styles */
@@ -65,23 +11,18 @@ body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-body.theme-dark {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-  color: #fff;
-}
-
-body.theme-light {
-  background: linear-gradient(135deg, #f8fafc 0%, #e9ecef 100%);
-  color: #222;
-}
-
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
-::-webkit-scrollbar-track {
-  background: #2d2d2d;
+[data-bs-theme="dark"] ::-webkit-scrollbar-track {
+  background: #2d2d2d; /* Adjusted for Bootstrap dark theme */
+  border-radius: 4px;
+}
+
+[data-bs-theme="light"] ::-webkit-scrollbar-track {
+  background: #f1f1f1; /* Adjusted for Bootstrap light theme */
   border-radius: 4px;
 }
 
@@ -101,52 +42,38 @@ body.theme-light {
   font-weight: bold;
 }
 
-body.theme-dark .navbar-brand,
-body.theme-dark .navbar-brand .bi {
-  color: #fff !important;
-}
-
-body.theme-light .navbar,
-body.theme-light .navbar-brand,
-body.theme-light .navbar-nav .nav-item .btn {
-  background-color: #fff !important;
-  color: #222 !important;
-  border-color: #dee2e6 !important;
-}
-
-body.theme-light .navbar {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
 /* Cards */
+/* General card styling can remain if it's an enhancement over Bootstrap defaults */
 .card {
-  border: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: none; /* Bootstrap 5 cards have borders by default, this removes it */
+  /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); Bootstrap provides shadows, this might be custom */
   transition: all 0.3s ease;
 }
 
 .card:hover {
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  /* box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4); Custom hover shadow */
 }
 
-body.theme-light .card {
-  background: #fff;
-  color: #222;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
+/* REMOVED: body.theme-light .card ... */
+/* REMOVED: body.theme-light .card-header ... */
 
-body.theme-light .card-header {
-  background: #f8fafc;
-  border-bottom: 1px solid #dee2e6;
-}
-
+/* Card header might still need some theming if Bootstrap's default isn't desired */
+/*
 .card-header {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
 }
+*/
+/* The above .card-header style is very specific to a dark theme.
+   If needed, it should be scoped with [data-bs-theme="dark"] */
+[data-bs-theme="dark"] .card-header {
+  border-bottom-color: var(--bs-border-color-translucent); /* Use Bootstrap variable */
+  /* background: rgba(255, 255, 255, 0.05); Consider if this is needed or use .text-bg-dark on card */
+}
 
 /* Form Controls */
-
+/* Bootstrap 5 handles form control theming with data-bs-theme. These might be redundant or conflicting. */
+/*
 .form-control,
 .form-select {
   background-color: #3d3d3d;
@@ -154,14 +81,9 @@ body.theme-light .card-header {
   color: #fff;
   transition: all 0.3s ease;
 }
-
-body.theme-light .form-control,
-body.theme-light .form-select {
-  background-color: #fff;
-  border: 1px solid #ced4da;
-  color: #222;
-}
-
+*/
+/* REMOVED: body.theme-light .form-control ... */
+/*
 .form-control:focus,
 .form-select:focus {
   background-color: #4d4d4d;
@@ -169,32 +91,28 @@ body.theme-light .form-select {
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
   color: #fff;
 }
-
-body.theme-light .form-control:focus,
-body.theme-light .form-select:focus {
-  background-color: #f8fafc;
-  border-color: #0d6efd;
-  color: #222;
-}
-
+*/
+/* REMOVED: body.theme-light .form-control:focus ... */
+/*
 .form-control::placeholder {
   color: #aaa;
 }
-
-body.theme-light .form-control::placeholder {
-  color: #888;
-}
+*/
+/* REMOVED: body.theme-light .form-control::placeholder ... */
 
 /* Buttons */
 .btn {
   transition: all 0.3s ease;
-  border-radius: 6px;
+  border-radius: 6px; /* Bootstrap default is 0.375rem, this is slightly different */
 }
 
 .btn:hover {
   transform: translateY(-1px);
 }
 
+/* Custom .btn-primary gradient. Bootstrap's .btn-primary will be used by default. */
+/* This can be kept if a custom gradient is desired for all .btn-primary. */
+/*
 .btn-primary {
   background: linear-gradient(45deg, #0d6efd, #1e7e34);
   border: none;
@@ -203,27 +121,17 @@ body.theme-light .form-control::placeholder {
 .btn-primary:hover {
   background: linear-gradient(45deg, #0b5ed7, #198754);
 }
+*/
+/* REMOVED: body.theme-light .btn-primary ... */
 
-body.theme-light .btn-primary {
-  background: linear-gradient(45deg, #0d6efd, #6c757d);
-  color: #fff;
-}
-
+/* .btn-outline-light is a Bootstrap class. These hover effects might be custom. */
+/*
 .btn-outline-light:hover {
   background-color: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.3);
 }
-
-body.theme-light .btn-outline-light {
-  color: #222;
-  border-color: #ced4da;
-  background: #fff;
-}
-
-body.theme-light .btn-outline-light:hover {
-  background-color: #f8fafc;
-  border-color: #adb5bd;
-}
+*/
+/* REMOVED: body.theme-light .btn-outline-light ... */
 
 /* Playlist Items */
 .playlist-item {
@@ -232,86 +140,69 @@ body.theme-light .btn-outline-light:hover {
   border-left: 3px solid transparent;
 }
 
-.playlist-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+[data-bs-theme="dark"] .playlist-item:hover {
+  background-color: rgba(255, 255, 255, 0.05); /* Or use Bootstrap's hover background variables */
   border-left-color: #0d6efd;
 }
 
-body.theme-light .playlist-item:hover {
-  background-color: #f1f3f5;
+[data-bs-theme="light"] .playlist-item:hover {
+  background-color: #f1f3f5; /* Or use Bootstrap's hover background variables */
   border-left-color: #0d6efd;
 }
 
-.playlist-item.playing {
+[data-bs-theme="dark"] .playlist-item.playing {
   background-color: rgba(13, 110, 253, 0.1);
   border-left-color: #0d6efd;
 }
 
-body.theme-light .playlist-item.playing {
+[data-bs-theme="light"] .playlist-item.playing {
   background-color: #e7f1ff;
   border-left-color: #0d6efd;
 }
 
 .playlist-item.playing .track-title {
-  color: #0d6efd;
+  /* This color might need to be dynamic based on theme */
+  color: #0d6efd; /* Consider var(--bs-primary) or similar */
 }
 
 .track-artwork {
   border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* This shadow might be too dark on light theme */
 }
 
 .track-title {
   font-weight: 600;
   margin-bottom: 2px;
 }
+/* REMOVED: body.theme-light .track-title ... (Bootstrap should handle text color) */
 
-body.theme-light .track-title {
-  color: #0d6efd;
-}
-
-.track-artist {
-  color: #aaa;
-  font-size: 0.9rem;
-}
-
-body.theme-light .track-artist {
-  color: #495057;
-}
-
-.track-duration {
-  color: #888;
-  font-size: 0.85rem;
-}
-
-body.theme-light .track-duration {
-  color: #adb5bd;
-}
+/* .track-artist and .track-duration text color should be handled by Bootstrap's text utilities or default inheritance */
+/* REMOVED: .track-artist { color: #aaa; ... } */
+/* REMOVED: body.theme-light .track-artist ... */
+/* REMOVED: .track-duration { color: #888; ... } */
+/* REMOVED: body.theme-light .track-duration ... */
 
 /* Progress Bar */
-
+/* Bootstrap progress bars are themed. These might be custom appearances. */
+/*
 .progress {
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
-
-body.theme-light .progress {
-  background-color: #e9ecef;
-}
-
+*/
+/* REMOVED: body.theme-light .progress ... */
+/*
 .progress-bar {
   background: linear-gradient(45deg, #0d6efd, #1e7e34);
   transition: width 0.3s ease;
 }
-
-body.theme-light .progress-bar {
-  background: linear-gradient(45deg, #0d6efd, #6c757d);
-}
+*/
+/* REMOVED: body.theme-light .progress-bar ... */
 
 /* Now Playing Card */
 #nowPlayingCard {
   animation: slideInDown 0.5s ease-out;
-  border-left: 4px solid #0d6efd;
+  /* border-left: 4px solid #0d6efd; This can be kept if desired */
 }
 
 @keyframes slideInDown {
@@ -326,8 +217,14 @@ body.theme-light .progress-bar {
 }
 
 /* Loading States */
+/* Shimmer effect can be kept, ensure colors work with both themes or use Bootstrap variables */
 .loading-shimmer {
-  background: linear-gradient(90deg, #2d2d2d 25%, #3d3d3d 50%, #2d2d2d 75%);
+  background: linear-gradient(
+    90deg,
+    rgba(var(--bs-secondary-rgb), 0.5) 25%,
+    rgba(var(--bs-secondary-rgb), 0.75) 50%,
+    rgba(var(--bs-secondary-rgb), 0.5) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -342,17 +239,22 @@ body.theme-light .progress-bar {
 }
 
 /* Connection Status */
+/* These are specific classes, can remain. */
 .spotify-connected {
   background: linear-gradient(45deg, #1db954, #1ed760);
   border: none;
+  color: white; /* Ensure text is visible */
 }
 
 .spotify-disconnected {
   background: #dc3545;
   border: none;
+  color: white; /* Ensure text is visible */
 }
 
 /* Range Slider */
+/* Styling for form-range. Bootstrap provides some defaults. These are more specific. */
+/*
 .form-range {
   background: transparent;
 }
@@ -375,17 +277,23 @@ body.theme-light .progress-bar {
 .form-range::-webkit-slider-thumb:hover {
   background: #0b5ed7;
 }
+*/
+/* These range slider styles are very theme-specific. Rely on Bootstrap's default theming for range inputs. */
 
 /* Switch */
+/* .form-check-input:checked is styled by Bootstrap. This might be a custom color. */
+/*
 .form-check-input:checked {
   background-color: #0d6efd;
   border-color: #0d6efd;
 }
+*/
 
 /* Modal */
+/* .modal-content is styled by Bootstrap. This shadow is custom. */
 .modal-content {
-  border: none;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  /* border: none; Bootstrap modals have borders */
+  /* box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); */ /* This shadow might be too dark on light theme */
 }
 
 /* Responsive Design */
@@ -418,70 +326,94 @@ body.theme-light .progress-bar {
 }
 
 /* List Group Items */
-
+/* Bootstrap themes .list-group-item. These might be redundant. */
+/*
 .list-group-item {
   background-color: transparent;
   border-color: rgba(255, 255, 255, 0.1);
 }
+*/
 
 /* Add extra contrast for stat boxes in dark mode */
-body.theme-dark .list-group-item.stat-box {
-  background-color: #23272b !important;
-  border-color: #444 !important;
-  color: #fff !important;
+/* This needs to be re-evaluated. If .stat-box is a card or similar, Bootstrap's .text-bg-dark etc. should be used. */
+/* For now, removing the theme-specific versions. If custom styling is needed, use [data-bs-theme] */
+/* REMOVED: body.theme-dark .list-group-item.stat-box ... */
+/* REMOVED: body.theme-light .list-group-item.stat-box ... */
+
+/* If .stat-box needs specific styling different from default list-group-items: */
+[data-bs-theme="dark"] .list-group-item.stat-box {
+  background-color: var(--bs-gray-800); /* Example using Bootstrap variable */
+  border-color: var(--bs-gray-700);
+  /* color: #fff !important; Should inherit correctly */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
-body.theme-light .list-group-item.stat-box {
-  background-color: #f8fafc !important;
-  border-color: #dee2e6 !important;
-  color: #222 !important;
+[data-bs-theme="light"] .list-group-item.stat-box {
+  background-color: var(--bs-gray-100); /* Example using Bootstrap variable */
+  border-color: var(--bs-gray-300);
+  /* color: #222 !important; Should inherit correctly */
 }
 
-body.theme-dark .list-group-item,
-body.theme-dark .list-group-item * {
-  color: #fff !important;
-}
-
-body.theme-light .list-group-item {
-  background-color: #f8fafc;
-  border-color: #dee2e6;
-}
-
-body.theme-dark .list-group-item {
-  background-color: transparent;
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
+/* REMOVED: body.theme-dark .list-group-item, body.theme-dark .list-group-item * ... */
+/* REMOVED: body.theme-light .list-group-item ... */
+/* REMOVED: body.theme-dark .list-group-item ... */
+/*
 .list-group-item:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
+*/
+/* Hover effects for list-group-items are handled by Bootstrap. */
 
 /* Icons */
 .bi {
   vertical-align: -0.125em;
 }
 
-/* Success/Error States */
+/* Success/Error States - Alerts */
+/* Bootstrap themes alerts. These are custom appearances. */
 .alert {
-  border: none;
+  border: none; /* Bootstrap alerts have borders */
   border-radius: 6px;
 }
 
+/* These custom alert styles can be kept if desired, but ensure they work well with Bootstrap's overall theming. */
+/* They use rgba backgrounds which can adapt to theme changes to some extent. */
 .alert-success {
-  background-color: rgba(25, 135, 84, 0.2);
-  color: #75b798;
+  background-color: rgba(25, 135, 84, 0.2); /* Consider Bootstrap's alert variables if possible */
+  color: #75b798; /* This color might not have enough contrast on light theme's light green bg */
   border-left: 4px solid #198754;
 }
 
 .alert-danger {
   background-color: rgba(220, 53, 69, 0.2);
-  color: #f5b7b1;
+  color: #f5b7b1; /* This color might not have enough contrast on light theme's light red bg */
   border-left: 4px solid #dc3545;
 }
 
 .alert-warning {
   background-color: rgba(255, 193, 7, 0.2);
-  color: #ffd43b;
+  color: #ffd43b; /* This color might not have enough contrast on light theme's light yellow bg */
   border-left: 4px solid #ffc107;
+}
+
+/* Ensure alert text color is legible on both themes if using custom backgrounds */
+[data-bs-theme="dark"] .alert-success {
+  color: #a3cfbb;
+}
+[data-bs-theme="light"] .alert-success {
+  color: #0a3622;
+}
+
+[data-bs-theme="dark"] .alert-danger {
+  color: #f8d7da;
+}
+[data-bs-theme="light"] .alert-danger {
+  color: #58151c;
+}
+
+[data-bs-theme="dark"] .alert-warning {
+  color: #ffe69c;
+}
+[data-bs-theme="light"] .alert-warning {
+  color: #664d03;
 }

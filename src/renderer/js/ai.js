@@ -42,7 +42,8 @@ class AIPlaylistGenerator {
       const playlistConcept = await this.generatePlaylistConcept(description, length);
 
       // Step 2: Search for tracks based on AI suggestions
-      const tracks = await this.findTracksFromConcept(playlistConcept);
+      // Pass the requested length to findTracksFromConcept
+      const tracks = await this.findTracksFromConcept(playlistConcept, length);
 
       // Step 3: Create the playlist name if not provided
       const finalPlaylistName = playlistName || (await this.generatePlaylistName(description)); // Step 4: Create playlist on Spotify
@@ -339,7 +340,8 @@ Make the search queries specific enough to find good results but broad enough to
 
     return "medium energy";
   }
-  async findTracksFromConcept(concept) {
+  async findTracksFromConcept(concept, targetLength = 25) {
+    // Added targetLength parameter
     const allTracks = [];
     const trackIds = new Set(); // Prevent duplicates
 
@@ -351,14 +353,19 @@ Make the search queries specific enough to find good results but broad enough to
         ...concept.suggestedArtists.map((artist) => `artist:${artist}`)
       ];
 
+      // Determine a reasonable upper limit for fetched tracks before ranking,
+      // e.g., 4 times the targetLength, but at least 50 and at most 100.
+      const fetchLimit = Math.min(100, Math.max(50, targetLength * 4));
+      const queryLimit = 10; // How many tracks to fetch per individual search query
+
       for (const query of searchStrategies) {
-        if (allTracks.length >= concept.searchQueries.length * 5) break; // Limit total searches
+        if (allTracks.length >= fetchLimit) break;
 
         try {
-          const tracks = await this.spotifyAPI.searchTracks(query, 10);
+          const tracks = await this.spotifyAPI.searchTracks(query, queryLimit);
 
           for (const track of tracks) {
-            if (!trackIds.has(track.id) && allTracks.length < 100) {
+            if (!trackIds.has(track.id) && allTracks.length < fetchLimit) {
               trackIds.add(track.id);
               allTracks.push(track);
             }
@@ -369,19 +376,21 @@ Make the search queries specific enough to find good results but broad enough to
       }
 
       // If we don't have enough tracks, try more generic searches
-      if (allTracks.length < 20) {
+      if (allTracks.length < targetLength && allTracks.length < fetchLimit) {
         const genericQueries = [
           "popular music",
           "top hits",
           "best songs",
           concept.suggestedGenres[0] || "pop"
         ];
+        const genericQueryLimit = 15;
 
         for (const query of genericQueries) {
-          const tracks = await this.spotifyAPI.searchTracks(query, 15);
+          if (allTracks.length >= fetchLimit) break;
+          const tracks = await this.spotifyAPI.searchTracks(query, genericQueryLimit);
 
           for (const track of tracks) {
-            if (!trackIds.has(track.id) && allTracks.length < 50) {
+            if (!trackIds.has(track.id) && allTracks.length < fetchLimit) {
               trackIds.add(track.id);
               allTracks.push(track);
             }
@@ -391,7 +400,7 @@ Make the search queries specific enough to find good results but broad enough to
 
       // Rank and select the best tracks
       const rankedTracks = await this.rankTracks(allTracks, concept);
-      return rankedTracks.slice(0, concept.length || 25);
+      return rankedTracks.slice(0, targetLength); // Use targetLength for the final slice
     } catch (error) {
       throw error;
     }
@@ -554,7 +563,7 @@ Respond with just the playlist name, nothing else.`;
                 content: prompt
               }
             ],
-            max_tokens: 1000,
+            max_tokens: 1000, // Increased max_tokens for potentially larger responses
             temperature: 0.7
           })
         });
@@ -564,104 +573,196 @@ Respond with just the playlist name, nothing else.`;
 
           if (!data.choices || !data.choices[0] || !data.choices[0].message) {
             throw new Error("Invalid response format from AI API");
-          } // Success! Update our preferred model for future requests
-          this.model = model;
-
+          }
+          this.model = model; // Success! Update our preferred model
           const content = data.choices[0].message.content;
-
           return content;
         } else {
-          // Log the error but try next model
           const errorBody = await response.text();
-
-          // Parse error details
           let errorData = {};
           try {
             errorData = JSON.parse(errorBody);
           } catch (e) {
-            // Ignore JSON parse errors
+            /* Ignore */
           }
 
-          // If it's a model-not-found error, try the next model
           if (response.status === 404 || response.status === 400) {
+            // Model not found or bad request
+            console.warn(`Model ${model} not found or bad request, trying next...`);
             continue;
-          } // If it's a quota/rate limit error, try next model but warn user
-          else if (response.status === 429) {
+          } else if (response.status === 429) {
+            // Rate limit or quota
             if (errorData.error?.code === "insufficient_quota") {
-              // Quota exceeded - try next model
+              console.warn(`Quota exceeded for model ${model}, trying next...`);
+            } else {
+              console.warn(`Rate limited for model ${model}, trying next...`);
             }
             continue;
           } else {
-            // For other errors (auth, server errors, etc.), don't try other models
             throw new Error(
-              `AI API error: ${response.status} ${response.statusText} - ${errorBody}`
+              `AI API error with model ${model}: ${response.status} ${response.statusText} - ${errorBody}`
             );
           }
         }
       } catch (error) {
-        // If it's a network error or similar, try next model
-        if (error.message.includes("fetch") || error.message.includes("network")) {
-          continue;
-        }
-
-        // If it's the last model, throw the error
+        console.error(`Error with model ${model}:`, error.message);
         if (model === modelList[modelList.length - 1]) {
-          throw error;
+          // If it's the last model, throw the error
+          if (error.message.includes("quota")) {
+            // Check if the error message indicates a quota issue
+            const quotaError = new Error(
+              "OpenAI quota exceeded across all models. Please add credits to your OpenAI account."
+            );
+            quotaError.code = "QUOTA_EXCEEDED";
+            throw quotaError;
+          }
+          throw error; // Otherwise, rethrow the last error
+        }
+        // Continue to the next model if not the last one
+      }
+    }
+    // If all models failed
+    const finalError = new Error(
+      "All AI models failed. Please check your API key, network connection, or OpenAI account status."
+    );
+    finalError.code = "ALL_MODELS_FAILED"; // Custom error code
+    throw finalError;
+  }
+
+  /**
+   * Analyzes user behavior summary using AI to derive preferences and anti-preferences.
+   * @param {Object} behaviorSummary - Summary of user behavior (skip/like ratios, top genres/artists, etc.).
+   * @returns {Promise<Object>} AI-derived insights including preferences and anti-preferences.
+   */
+  async analyzeUserBehavior(behaviorSummary) {
+    if (!this.hasApiKey) {
+      console.warn("AI analyzeUserBehavior: API key not configured. Skipping AI analysis.");
+      return { preferences: {}, antiPreferences: {} }; // Return empty if no key
+    }
+
+    const prompt = `
+      Analyze the following user listening behavior summary:
+      ${JSON.stringify(behaviorSummary, null, 2)}
+
+      Based on this summary, identify:
+      1. Key preferences: Genres, artists, energy levels (high, medium, low), moods (e.g., upbeat, chill, melancholic), and potential eras (e.g., 80s, modern) the user enjoys.
+      2. Key anti-preferences: Genres, artists, or characteristics the user seems to be avoiding or disliking.
+
+      Provide your analysis in JSON format with the following structure:
+      {
+        "preferences": {
+          "genres": ["genre1", "genre2", ...],
+          "artists": ["artist1", "artist2", ...],
+          "energy": "high/medium/low/varied",
+          "moods": ["mood1", "mood2", ...],
+          "eras": ["era1", "era2", ...]
+        },
+        "antiPreferences": {
+          "genres": ["genreA", "genreB", ...],
+          "artists": ["artistX", "artistY", ...]
         }
       }
-    } // If all models failed due to quota, provide helpful message
-    const quotaMessage =
-      "OpenAI quota exceeded. Using fallback algorithm for playlist generation. Please add credits to your OpenAI account for AI-powered features.";
+      Be concise and focus on the strongest signals from the data. If data is insufficient for a category, provide an empty array or a neutral term like "varied".
+    `;
 
-    // Throw a specific quota error that can be handled gracefully
-    const quotaError = new Error(quotaMessage);
-    quotaError.code = "QUOTA_EXCEEDED";
-    throw quotaError;
+    try {
+      const response = await this.makeAIRequest(prompt);
+      const cleanedResponse = this.cleanJSONResponse(response);
+      const insights = JSON.parse(cleanedResponse);
+      // Basic validation of the parsed structure
+      if (!insights.preferences || !insights.antiPreferences) {
+        console.error("AI analyzeUserBehavior: Invalid JSON structure from AI.", cleanedResponse);
+        return { preferences: {}, antiPreferences: {} };
+      }
+      return insights;
+    } catch (error) {
+      console.error("AI analyzeUserBehavior: Failed to get or parse AI insights:", error);
+      // Fallback to a generic or empty structure on error
+      return {
+        preferences: { genres: [], artists: [], energy: "varied", moods: [], eras: [] },
+        antiPreferences: { genres: [], artists: [] }
+      };
+    }
   }
 
-  async adaptPlaylistBasedOnBehavior(playlistId, userBehavior) {
-    // This would analyze user behavior (skips, likes, listening time)
-    // and suggest modifications to the playlist
+  /**
+   * Generates new track suggestions using AI based on user insights.
+   * @param {Object} insights - AI-derived user preferences and anti-preferences.
+   * @param {Set<String>} currentPlaylistTrackIds - Set of track IDs currently in the playlist to avoid duplicates.
+   * @param {Number} count - Number of new tracks to suggest.
+   * @returns {Promise<Array>} A list of Spotify track objects.
+   */
+  async generateAISuggestedTracks(insights, currentPlaylistTrackIds, count = 2) {
+    if (!this.hasApiKey) {
+      console.warn(
+        "AI generateAISuggestedTracks: API key not configured. Skipping AI suggestions."
+      );
+      return [];
+    }
+    if (!insights || !insights.preferences) {
+      console.warn("AI generateAISuggestedTracks: Insufficient insights provided. Skipping.");
+      return [];
+    }
 
-    const { skippedTracks, likedTracks, partiallyListened } = userBehavior;
+    const prompt = `
+      Based on the following user music profile:
+      Preferences: ${JSON.stringify(insights.preferences, null, 2)}
+      Anti-Preferences: ${JSON.stringify(insights.antiPreferences, null, 2)}
 
-    // Generate insights
-    const insights = await this.analyzeUserBehavior(userBehavior);
+      Suggest ${count} new song(s) (track name and artist) that this user would likely enjoy.
+      Do not suggest songs that are too obscure unless the preferences strongly indicate an interest in deep cuts.
+      Prioritize variety if preferences are broad, or specificity if preferences are narrow.
 
-    // Suggest new tracks or replacements
-    const suggestions = await this.generateAdaptationSuggestions(insights);
+      Respond ONLY with a JSON array of objects, each with "name" and "artist" keys:
+      [
+        { "name": "Track Name 1", "artist": "Artist Name 1" },
+        { "name": "Track Name 2", "artist": "Artist Name 2" }
+      ]
+    `;
 
-    return suggestions;
-  }
+    try {
+      const response = await this.makeAIRequest(prompt);
+      const cleanedResponse = this.cleanJSONResponse(response);
+      const aiSuggestions = JSON.parse(cleanedResponse);
 
-  async analyzeUserBehavior(behavior) {
-    // Analyze patterns in user behavior
-    // This is a simplified version - could be much more sophisticated
+      if (!Array.isArray(aiSuggestions)) {
+        console.error(
+          "AI generateAISuggestedTracks: AI response is not an array.",
+          cleanedResponse
+        );
+        return [];
+      }
 
-    const insights = {
-      preferredGenres: [],
-      avoidedGenres: [],
-      preferredArtists: [],
-      energyPreference: "medium",
-      timeOfDayPattern: null
-    };
-
-    // Analyze skipped vs completed tracks
-    // This would require more data about the tracks
-
-    return insights;
-  }
-
-  async generateAdaptationSuggestions(insights) {
-    // Generate suggestions based on insights
-    const suggestions = {
-      tracksToRemove: [],
-      tracksToAdd: [],
-      reasoning: ""
-    };
-
-    // This would use AI to generate smart suggestions
-    return suggestions;
+      const spotifyTracks = [];
+      for (const suggestion of aiSuggestions.slice(0, count)) {
+        // Ensure we don't exceed 'count'
+        if (suggestion.name && suggestion.artist) {
+          try {
+            const searchResults = await this.spotifyAPI.searchTracks(
+              `${suggestion.name} ${suggestion.artist}`,
+              1
+            );
+            if (searchResults && searchResults.length > 0) {
+              const foundTrack = searchResults[0];
+              if (!currentPlaylistTrackIds.has(foundTrack.id)) {
+                spotifyTracks.push(foundTrack);
+                currentPlaylistTrackIds.add(foundTrack.id); // Add to set to avoid duplicates in this batch
+              }
+            }
+          } catch (searchError) {
+            console.warn(
+              `AI generateAISuggestedTracks: Spotify search failed for "${suggestion.name} - ${suggestion.artist}":`,
+              searchError
+            );
+          }
+        }
+        if (spotifyTracks.length >= count) break; // Stop if we have enough tracks
+      }
+      return spotifyTracks;
+    } catch (error) {
+      console.error("AI generateAISuggestedTracks: Failed to get or parse AI suggestions:", error);
+      return [];
+    }
   }
 
   // Helper function to clean JSON responses that might be wrapped in markdown

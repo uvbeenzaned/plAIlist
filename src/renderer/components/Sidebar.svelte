@@ -12,17 +12,19 @@
     toggleLearningEnabled,
     refreshBehaviorInsights,
     behaviorStatistics = null,
-    trackSkipAction,
-    trackLikeAction,
-    trackRemovalAction,
     behaviorTracker,
     analyzeCurrentTrack,
     currentPlaylist = $bindable(),
-    handleAutoAdaptation
+    handleAutoAdaptation,
+    showNotification // Added from App.svelte
   } = $props();
   // State for sidebar controls using runes
   let autoAdaptEnabled = $state(true);
   let discoveryLevel = $state(30);
+
+  // State for Data Transparency Modal
+  let showDataModal = $state(false);
+  let dataToView = $state("");
 
   // Load state from localStorage on mount
   $effect(() => {
@@ -91,10 +93,12 @@
         recentPlaylists = updatedPlaylists;
         localStorage.setItem("recentPlaylists", JSON.stringify(updatedPlaylists));
 
-        showInfo(`Playlist "${playlist.name}" deleted successfully`);
+        // Use the passed showNotification for user feedback
+        showNotification(`Playlist "${playlist.name}" deleted successfully`, "success");
       } catch (error) {
         console.error("Failed to delete playlist:", error);
-        showInfo("Failed to delete playlist: " + error.message);
+        // Use the passed showNotification for user feedback
+        showNotification("Failed to delete playlist: " + error.message, "error");
       }
     }
   }
@@ -111,7 +115,47 @@
   }
 
   function showInfo(message) {
-    console.log(message);
+    // Use the showNotification prop from App.svelte
+    if (showNotification) {
+      showNotification(message, "info");
+    } else {
+      console.log("Info:", message); // Fallback if prop not passed
+    }
+  }
+
+  async function handleViewMyData() {
+    if (behaviorTracker) {
+      try {
+        const exportedData = await behaviorTracker.exportData();
+        dataToView = JSON.stringify(exportedData, null, 2);
+        showDataModal = true;
+      } catch (error) {
+        console.error("Failed to export behavior data:", error);
+        showNotification("Failed to retrieve your data.", "error");
+      }
+    } else {
+      showNotification("Behavior tracker not available.", "warning");
+    }
+  }
+
+  async function handleClearMyData() {
+    if (behaviorTracker) {
+      const confirmClear = confirm(
+        "Are you sure you want to clear all your learned behavior data? This action cannot be undone."
+      );
+      if (confirmClear) {
+        try {
+          await behaviorTracker.clearAllData();
+          await refreshBehaviorInsights(); // Refresh stats and insights display
+          showNotification("Your behavior data has been cleared.", "success");
+        } catch (error) {
+          console.error("Failed to clear behavior data:", error);
+          showNotification("Failed to clear your data.", "error");
+        }
+      }
+    } else {
+      showNotification("Behavior tracker not available.", "warning");
+    }
   }
 </script>
 
@@ -286,6 +330,25 @@
         {/if}
       </div>
     {/if}
+
+    <!-- Data & Privacy -->
+    <div class="mb-3">
+      <div class="form-label">
+        <i class="bi bi-shield-check me-1"></i>
+        Data & Privacy
+      </div>
+      <div class="d-grid gap-2">
+        <button class="btn btn-outline-secondary btn-sm" onclick={handleViewMyData}>
+          <i class="bi bi-eye me-1"></i> View My Data
+        </button>
+        <button class="btn btn-outline-danger btn-sm" onclick={handleClearMyData}>
+          <i class="bi bi-trash3 me-1"></i> Clear My Data
+        </button>
+      </div>
+      <small class="text-muted d-block mt-1">
+        Manage your learned preferences and listening history.
+      </small>
+    </div>
   </div>
 </div>
 
@@ -355,3 +418,38 @@
     </div>
   </div>
 </div>
+
+<!-- Data Modal -->
+{#if showDataModal}
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-bottom-secondary">
+          <h5 class="modal-title">Your Behavior Data</h5>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            aria-label="Close"
+            onclick={() => (showDataModal = false)}
+          ></button>
+        </div>
+        <div class="modal-body">
+          <p>
+            <small
+              >This is a JSON representation of the data plAIlist has learned about your listening
+              habits. This data is stored locally on your computer.</small
+            >
+          </p>
+          <pre class="bg-black p-3 rounded" style="max-height: 60vh; overflow-y: auto;"><code
+              >{dataToView}</code
+            ></pre>
+        </div>
+        <div class="modal-footer border-top-secondary">
+          <button type="button" class="btn btn-secondary" onclick={() => (showDataModal = false)}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}

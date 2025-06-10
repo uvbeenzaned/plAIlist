@@ -112,6 +112,7 @@
 
         // Trigger auto-adaptation if enabled and we have a current playlist
         if (behaviorTracker.isAutoAdaptEnabled() && currentPlaylist) {
+          console.log("▶️ NowPlaying: Attempting auto-adaptation due to manual skip."); // DIAGNOSTIC LOG
           try {
             const adaptationActions = await behaviorTracker.handleAutoAdaptation(
               currentTrack,
